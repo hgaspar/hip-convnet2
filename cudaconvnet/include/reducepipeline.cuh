@@ -136,13 +136,13 @@ public:
 
 class ReducePeer : public IReduceSegment {
 protected:
-    std::map<int,cudaStream_t> _streams;  // device id -> stream
+    std::map<int,hipStream_t> _streams;  // device id -> stream
     std::map<int,int> _numInputsReceived; // chunk idx -> num inputs
     int _numInputsFinished;
     HostNVMatrix _mat;
     bool _add;
     bool processMessage(ReduceMessage& msg);
-    inline cudaStream_t getStream(int deviceID);
+    inline hipStream_t getStream(int deviceID);
     inline NVMatrix& getMatrix(ReduceMessage& msg);
     void hostAdd(const float* src, float* tgt, const int n, const float scaleTgt);
 public:

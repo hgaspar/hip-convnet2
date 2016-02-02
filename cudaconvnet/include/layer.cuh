@@ -178,7 +178,7 @@ public:
     virtual bool postInit();
     int getDeviceID();
     ConvNetThread& getConvNetThread();
-    cudaStream_t getStream();
+    hipStream_t getStream();
     void syncStream();
     void setBwdTerminal(int passIdx);
     // Do nothing if this layer has no weights
@@ -414,7 +414,7 @@ protected:
     ConvNet* _convNet;
 //    std::map<int, NVMatrix*> _outputs2; // Buffer for copying data during computation
     std::map<int, MemoryView*> _memSrcActs2;        // // Buffer for copying data during computation
-    std::map<int, cudaStream_t> _copyStreams;
+    std::map<int, hipStream_t> _copyStreams;
     void fpropActs(int inpIdx, float scaleTargets, PASS_TYPE passType, int passIdx);
     Queue<int> _copyFinishQueue;
     DataCopyThread* _copier;
@@ -434,7 +434,7 @@ public:
     bool postInit();
     ConvNet& getConvNet();
     int getNumInputReplicas();
-    cudaStream_t getCopyStream(int deviceID);
+    hipStream_t getCopyStream(int deviceID);
     Queue<int>& getCopyFinishQueue() {
         return _copyFinishQueue;
     }

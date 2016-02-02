@@ -98,7 +98,7 @@ public:
 class ICopySegment : public Thread {
 protected:
     int _deviceID, _execDeviceID;
-    cudaStream_t _stream;
+    hipStream_t _stream;
     ICopySegment* _prev;
     std::vector<CopyPeer*> _next;
     Queue<CopyMessage*> _queue;
@@ -203,7 +203,7 @@ protected:
 class TwoPeeringGPUsBroadcaster : public ISafeBroadcastNetwork {
 protected:
     int _tgtDeviceID;
-    cudaStream_t _tgtStream;
+    hipStream_t _tgtStream;
     void makeConnections();
     void resetDeviceID(int d);
     void _broadcast(std::map<int, NVMatrix*>& mats, float scaleSource, float scaleTargets);

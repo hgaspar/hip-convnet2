@@ -31,15 +31,15 @@ class Layer;
 
 class StreamBroadcast {
 protected:
-    std::map<int,cudaStream_t> _streams;
+    std::map<int,hipStream_t> _streams;
     std::set<int> _ownedStreams;
     HostNVMatrix _hostMem;
     void toHostMem(NVMatrix& src, NVMatrix& hostmem, int srcDevice);
     void toTarget(NVMatrix& hostmem, NVMatrix& tgt, int tgtDevice, float scaleTarget, float scaleOutput);
-    void init(std::map<int,cudaStream_t>& streams);
+    void init(std::map<int,hipStream_t>& streams);
     void init(std::map<int,NVMatrix*>& mats);
 public:
-    StreamBroadcast(std::map<int,cudaStream_t>& streams);
+    StreamBroadcast(std::map<int,hipStream_t>& streams);
     StreamBroadcast();
     virtual ~StreamBroadcast();
 
@@ -47,7 +47,7 @@ public:
     void transfer(std::map<int,NVMatrix*>& mats, int srcDevice, float scaleTarget, float scaleOutput);
     void transfer(std::map<int,NVMatrix*>& mats, int srcDevice);
     void sync(int deviceID);
-    cudaStream_t getStream(int deviceID);
+    hipStream_t getStream(int deviceID);
 };
 
 #endif /* STREAMBROADCAST_CUH_ */
