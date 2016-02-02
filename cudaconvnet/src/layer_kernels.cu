@@ -1,3 +1,4 @@
+#include "hip_runtime.h"
 /*
  * Copyright 2014 Google Inc. All rights reserved.
  *
@@ -36,7 +37,7 @@ using namespace std;
 __global__ void kMultiSoftmaxCost(float* probs, float* labels, float* maxProbs,
                                   float* labelLogProbs, float* correctProbs, float* top5Probs,
                                   const int numCases, const int numOut, const int setSize) {
-    const int tx = blockIdx.x * LOGREG_ERR_THREADS_X + threadIdx.x;
+    const int tx = hipBlockIdx_x * LOGREG_ERR_THREADS_X + hipThreadIdx_x;
 
     if (tx < numCases) {
         const int label = int(labels[tx]);
@@ -87,15 +88,15 @@ void computeMultiSoftmaxCost(NVMatrix& labels, NVMatrix& probs, NVMatrix& maxPro
     top5Probs_out.resize(1, numCases);
     dim3 threads(LOGREG_ERR_THREADS_X, 1);
     dim3 blocks(DIVUP(numCases, LOGREG_ERR_THREADS_X), 1);
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
 
-    cudaFuncSetCacheConfig(kMultiSoftmaxCost, cudaFuncCachePreferL1);
-    kMultiSoftmaxCost<<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
+    hipFuncSetCacheConfig(kMultiSoftmaxCost, hipFuncCachePreferL1);
+    hipLaunchKernel(HIP_KERNEL_NAME(kMultiSoftmaxCost), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
                                     labelLogProbs_out.getDevData(), correctProbs_out.getDevData(), top5Probs_out.getDevData(),
                                     numCases, numOut, setSize);
 
     getLastCudaError("kMultiSoftmaxCost: Kernel execution failed");
-//    cudaThreadSynchronize();
+//    hipDeviceSynchronize();
 }
 
 /*
@@ -110,7 +111,7 @@ void computeMultiSoftmaxCost(NVMatrix& labels, NVMatrix& probs, NVMatrix& maxPro
  */
 __global__ void kCrossEntCost(float* probs, float* labels, float* maxProbs, float* labelLogProbs, float* correctProbs,
                             const int numCases, const int numOut) {
-    const int tx = blockIdx.x * LOGREG_ERR_THREADS_X + threadIdx.x;
+    const int tx = hipBlockIdx_x * LOGREG_ERR_THREADS_X + hipThreadIdx_x;
 
     if (tx < numCases) {
         probs += tx;
@@ -162,8 +163,8 @@ __global__ void kCrossEntCost(float* probs, float* labels, float* maxProbs, floa
 template <bool add>
 __global__ void kCrossEntGrad(float* y_l, float* labels, float* dE_dy_l, const int numCases,
                                  const int numOut, const float gradCoeff) {
-    const int tx = blockIdx.x * LOGREG_GRAD_THREADS_X + threadIdx.x;
-    const int ty = blockIdx.y * LOGREG_GRAD_THREADS_Y + threadIdx.y;
+    const int tx = hipBlockIdx_x * LOGREG_GRAD_THREADS_X + hipThreadIdx_x;
+    const int ty = hipBlockIdx_y * LOGREG_GRAD_THREADS_Y + hipThreadIdx_y;
     const int tidx = ty * numCases + tx;
     
     if (ty < numOut && tx < numCases) {
@@ -188,8 +189,8 @@ __global__ void kCrossEntGrad(float* y_l, float* labels, float* dE_dy_l, const i
 template <bool add>
 __global__ void kCrossEntSoftmaxGrad(float* y_l, float* labels, float* dE_dx_l, const int numCases,
                                  const int numOut, const float gradCoeff) {
-    const int tx = blockIdx.x * LOGREG_GRAD_THREADS_X + threadIdx.x;
-    const int ty = blockIdx.y * LOGREG_GRAD_THREADS_Y + threadIdx.y;
+    const int tx = hipBlockIdx_x * LOGREG_GRAD_THREADS_X + hipThreadIdx_x;
+    const int ty = hipBlockIdx_y * LOGREG_GRAD_THREADS_Y + hipThreadIdx_y;
     const int tidx = ty * numCases + tx;
     
     if (ty < numOut && tx < numCases) {
@@ -216,7 +217,7 @@ __global__ void kCrossEntSoftmaxGrad(float* y_l, float* labels, float* dE_dx_l, 
  */
 __global__ void kLogregCost(float* probs, float* labels, float* maxProbs, float* labelLogProbs, float* correctProbs,
                             const int numCases, const int numOut) {
-    const int tx = blockIdx.x * LOGREG_ERR_THREADS_X + threadIdx.x;
+    const int tx = hipBlockIdx_x * LOGREG_ERR_THREADS_X + hipThreadIdx_x;
 
     if (tx < numCases) {
         const int label = int(labels[tx]);
@@ -259,8 +260,8 @@ __global__ void kLogregCost(float* probs, float* labels, float* maxProbs, float*
 template <bool add>
 __global__ void kLogregCostGrad(float* y_l, float* labels, float* dE_dy_l, const int numCases,
                                  const int numOut, const float gradCoeff) {
-    const int tx = blockIdx.x * LOGREG_GRAD_THREADS_X + threadIdx.x;
-    const int ty = blockIdx.y * LOGREG_GRAD_THREADS_Y + threadIdx.y;
+    const int tx = hipBlockIdx_x * LOGREG_GRAD_THREADS_X + hipThreadIdx_x;
+    const int ty = hipBlockIdx_y * LOGREG_GRAD_THREADS_Y + hipThreadIdx_y;
     const int tidx = ty * numCases + tx;
     
     if (ty < numOut && tx < numCases) {
@@ -285,8 +286,8 @@ __global__ void kLogregCostGrad(float* y_l, float* labels, float* dE_dy_l, const
 template <bool add>
 __global__ void kLogregSoftmaxGrad(float* y_l, float* labels, float* dE_dx_l, const int numCases,
                                  const int numOut, const float gradCoeff) {
-    const int tx = blockIdx.x * LOGREG_GRAD_THREADS_X + threadIdx.x;
-    const int ty = blockIdx.y * LOGREG_GRAD_THREADS_Y + threadIdx.y;
+    const int tx = hipBlockIdx_x * LOGREG_GRAD_THREADS_X + hipThreadIdx_x;
+    const int ty = hipBlockIdx_y * LOGREG_GRAD_THREADS_Y + hipThreadIdx_y;
     const int tidx = ty * numCases + tx;
     
     if (ty < numOut && tx < numCases) {
@@ -308,8 +309,8 @@ __global__ void kLogregSoftmaxGrad(float* y_l, float* labels, float* dE_dx_l, co
  */
 template <bool add>
 __global__ void kSoftmaxGrad(float* dE_dy_l, float* y_l, float* dE_dx_l, const int numCases, const int numOut, const float scaleTarget, const float scaleGrad) {
-    const int tx = blockIdx.x * LOGREG_GRAD_THREADS_X + threadIdx.x;
-    const int ty = blockIdx.y * LOGREG_GRAD_THREADS_Y + threadIdx.y;
+    const int tx = hipBlockIdx_x * LOGREG_GRAD_THREADS_X + hipThreadIdx_x;
+    const int ty = hipBlockIdx_y * LOGREG_GRAD_THREADS_Y + hipThreadIdx_y;
     const int tidx = ty * numCases + tx;
     
     if (ty < numOut && tx < numCases) {
@@ -330,7 +331,7 @@ __global__ void kSoftmaxGrad(float* dE_dy_l, float* y_l, float* dE_dx_l, const i
 template <int B_X, bool add>
 __global__ void kEltwiseMaxGrad(float* actGrad, float* input, float* output, float* target,
                                 const int numElements) {
-    for (int i = B_X * blockIdx.x + threadIdx.x; i < numElements; i += B_X * gridDim.x) {
+    for (int i = B_X * hipBlockIdx_x + hipThreadIdx_x; i < numElements; i += B_X * hipGridDim_x) {
         if (add) {
             target[i] += actGrad[i] * (output[i] == input[i]);
         } else {
@@ -348,15 +349,15 @@ void computeEltwiseMaxGrad(NVMatrix& actGrad, NVMatrix& input, NVMatrix& output,
     
     dim3 blocks(DIVUP(actGrad.getNumElements(), 128));
     dim3 threads(128);
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     if (add) {
         assert(actGrad.isSameDims(target));
-        cudaFuncSetCacheConfig(kEltwiseMaxGrad<128, true>, cudaFuncCachePreferL1);
-        kEltwiseMaxGrad<128, true><<<blocks, threads, 0, stream>>>(actGrad.getDevData(), input.getDevData(), output.getDevData(), target.getDevData(), actGrad.getNumElements());
+        hipFuncSetCacheConfig(kEltwiseMaxGrad<128, true>, hipFuncCachePreferL1);
+        hipLaunchKernel(HIP_KERNEL_NAME(kEltwiseMaxGrad<128, true>), dim3(blocks), dim3(threads), 0, stream, actGrad.getDevData(), input.getDevData(), output.getDevData(), target.getDevData(), actGrad.getNumElements());
     } else {
         target.resize(actGrad);
-        cudaFuncSetCacheConfig(kEltwiseMaxGrad<128, false>, cudaFuncCachePreferL1);
-        kEltwiseMaxGrad<128, false><<<blocks, threads, 0, stream>>>(actGrad.getDevData(), input.getDevData(), output.getDevData(), target.getDevData(), actGrad.getNumElements());
+        hipFuncSetCacheConfig(kEltwiseMaxGrad<128, false>, hipFuncCachePreferL1);
+        hipLaunchKernel(HIP_KERNEL_NAME(kEltwiseMaxGrad<128, false>), dim3(blocks), dim3(threads), 0, stream, actGrad.getDevData(), input.getDevData(), output.getDevData(), target.getDevData(), actGrad.getNumElements());
     }
     
     getLastCudaError("computeEltwiseMaxGrad: Kernel execution failed");
@@ -388,9 +389,9 @@ void computeCrossEntCost(NVMatrix& labels, NVMatrix& probs, NVMatrix& labelLogPr
     correctProbs_out.resize(1, numCases);
     dim3 threads(LOGREG_ERR_THREADS_X, 1);
     dim3 blocks(DIVUP(numCases, LOGREG_ERR_THREADS_X), 1);
-    cudaStream_t stream = NVMatrix::getDefaultStream();
-    cudaFuncSetCacheConfig(kCrossEntCost, cudaFuncCachePreferL1);
-    kCrossEntCost<<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
+    hipStream_t stream = NVMatrix::getDefaultStream();
+    hipFuncSetCacheConfig(kCrossEntCost, hipFuncCachePreferL1);
+    hipLaunchKernel(HIP_KERNEL_NAME(kCrossEntCost), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
                                      labelLogProbs_out.getDevData(), correctProbs_out.getDevData(),
                                      numCases, numOut);
     getLastCudaError("kCrossEntCost: Kernel execution failed");
@@ -410,13 +411,13 @@ void computeCrossEntGrad(NVMatrix& labels, NVMatrix& probs, NVMatrix& target, bo
     
     dim3 threads(LOGREG_GRAD_THREADS_X, LOGREG_GRAD_THREADS_Y);
     dim3 blocks(DIVUP(numCases, LOGREG_GRAD_THREADS_X), DIVUP(numOut, LOGREG_GRAD_THREADS_Y));
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     if (!add) {
         target.resize(probs);
-        kCrossEntGrad<false><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kCrossEntGrad<false>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     } else {
-        kCrossEntGrad<true><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kCrossEntGrad<true>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     }
 
@@ -436,13 +437,13 @@ void computeSoftmaxGrad(NVMatrix& acts, NVMatrix& actsGrad, NVMatrix& target, fl
 
     dim3 threads(LOGREG_GRAD_THREADS_X, LOGREG_GRAD_THREADS_Y);
     dim3 blocks(DIVUP(numCases, LOGREG_GRAD_THREADS_X), DIVUP(numOut, LOGREG_GRAD_THREADS_Y));
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
 
     if (scaleTarget == 0) {
         target.resize(acts);
-        kSoftmaxGrad<false><<<blocks, threads, 0, stream>>>(actsGrad.getDevData(), acts.getDevData(), target.getDevData(), numCases, numOut, scaleTarget, scaleGrad);
+        hipLaunchKernel(HIP_KERNEL_NAME(kSoftmaxGrad<false>), dim3(blocks), dim3(threads), 0, stream, actsGrad.getDevData(), acts.getDevData(), target.getDevData(), numCases, numOut, scaleTarget, scaleGrad);
     } else {
-        kSoftmaxGrad<true><<<blocks, threads, 0, stream>>>(actsGrad.getDevData(), acts.getDevData(), target.getDevData(), numCases, numOut, scaleTarget, scaleGrad);
+        hipLaunchKernel(HIP_KERNEL_NAME(kSoftmaxGrad<true>), dim3(blocks), dim3(threads), 0, stream, actsGrad.getDevData(), acts.getDevData(), target.getDevData(), numCases, numOut, scaleTarget, scaleGrad);
     }
     getLastCudaError("computeSoftmaxGrad: Kernel execution failed");
 }
@@ -459,15 +460,15 @@ void computeCrossEntSoftmaxGrad(NVMatrix& labels, NVMatrix& probs, NVMatrix& tar
     
     dim3 threads(LOGREG_GRAD_THREADS_X, LOGREG_GRAD_THREADS_Y);
     dim3 blocks(DIVUP(numCases, LOGREG_GRAD_THREADS_X), DIVUP(numOut, LOGREG_GRAD_THREADS_Y));
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     if (!add) {
         target.resize(probs);
-        cudaFuncSetCacheConfig(kCrossEntSoftmaxGrad<false>, cudaFuncCachePreferL1);
-        kCrossEntSoftmaxGrad<false><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipFuncSetCacheConfig(kCrossEntSoftmaxGrad<false>, hipFuncCachePreferL1);
+        hipLaunchKernel(HIP_KERNEL_NAME(kCrossEntSoftmaxGrad<false>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                         numCases, numOut, coeff);
     } else {
-        cudaFuncSetCacheConfig(kCrossEntSoftmaxGrad<true>, cudaFuncCachePreferL1);
-        kCrossEntSoftmaxGrad<true><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipFuncSetCacheConfig(kCrossEntSoftmaxGrad<true>, hipFuncCachePreferL1);
+        hipLaunchKernel(HIP_KERNEL_NAME(kCrossEntSoftmaxGrad<true>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                         numCases, numOut, coeff);
     }
     getLastCudaError("kCrossEntSoftmaxGrad: Kernel execution failed");
@@ -497,9 +498,9 @@ void computeLogregCost(NVMatrix& labels, NVMatrix& probs, NVMatrix& maxProbs, NV
     correctProbs_out.resize(1, numCases);
     dim3 threads(LOGREG_ERR_THREADS_X, 1);
     dim3 blocks(DIVUP(numCases, LOGREG_ERR_THREADS_X), 1);
-    cudaStream_t stream = NVMatrix::getDefaultStream();
-    cudaFuncSetCacheConfig(kLogregCost, cudaFuncCachePreferL1);
-    kLogregCost<<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
+    hipStream_t stream = NVMatrix::getDefaultStream();
+    hipFuncSetCacheConfig(kLogregCost, hipFuncCachePreferL1);
+    hipLaunchKernel(HIP_KERNEL_NAME(kLogregCost), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), maxProbs.getDevData(),
                                      labelLogProbs_out.getDevData(), correctProbs_out.getDevData(),
                                      numCases, numOut);
     getLastCudaError("computeLogregCost: Kernel execution failed");
@@ -517,13 +518,13 @@ void computeLogregGrad(NVMatrix& labels, NVMatrix& probs, NVMatrix& target, bool
     
     dim3 threads(LOGREG_GRAD_THREADS_X, LOGREG_GRAD_THREADS_Y);
     dim3 blocks(DIVUP(numCases, LOGREG_GRAD_THREADS_X), DIVUP(numOut, LOGREG_GRAD_THREADS_Y));
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     if (!add) {
         target.resize(probs);
-        kLogregCostGrad<false><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kLogregCostGrad<false>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     } else {
-        kLogregCostGrad<true><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kLogregCostGrad<true>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     }
 
@@ -541,13 +542,13 @@ void computeLogregSoftmaxGrad(NVMatrix& labels, NVMatrix& probs, NVMatrix& targe
     
     dim3 threads(LOGREG_GRAD_THREADS_X, LOGREG_GRAD_THREADS_Y);
     dim3 blocks(DIVUP(numCases, LOGREG_GRAD_THREADS_X), DIVUP(numOut, LOGREG_GRAD_THREADS_Y));
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     if (!add) {
         target.resize(probs);
-        kLogregSoftmaxGrad<false><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kLogregSoftmaxGrad<false>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     } else {
-        kLogregSoftmaxGrad<true><<<blocks, threads, 0, stream>>>(probs.getDevData(), labels.getDevData(), target.getDevData(),
+        hipLaunchKernel(HIP_KERNEL_NAME(kLogregSoftmaxGrad<true>), dim3(blocks), dim3(threads), 0, stream, probs.getDevData(), labels.getDevData(), target.getDevData(),
                                                      numCases, numOut, coeff);
     }
 

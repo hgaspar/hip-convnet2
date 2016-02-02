@@ -681,13 +681,13 @@ void ConvNetThread::initLayer(PyObject* paramsDict, int replicaID) {
  */
 void ConvNetThread::initCuda() { 
     NVMatrix::setDeviceID(_deviceID);
-    checkCudaErrors(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
+    checkCudaErrors(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
     for (int i = 0; i < _convNet->getDeviceIDs().size(); i++) {
         int d = _convNet->getDeviceIDs()[i];
         if (d != _deviceID) {
             if (NVMatrix::canAccessPeer(_deviceID, d)) {
                 printf("Enabling peer access GPU %d --> GPU %d\n", NVMatrix::getDeviceID(), d);
-                checkCudaErrors(cudaDeviceEnablePeerAccess(d, 0));
+                checkCudaErrors(hipDeviceEnablePeerAccess(d, 0));
             } else {
                 printf("No peer access GPU %d -->  GPU %d\n", _deviceID, d);
             }

@@ -117,19 +117,19 @@ ReducePeer::ReducePeer(IEightGPUReducer& parent) : IReduceSegment(parent, DEVICE
 }
 
 ReducePeer::~ReducePeer() {
-    for(std::map<int,cudaStream_t>::iterator it = _streams.begin(); it != _streams.end(); ++it) {
-        checkCudaErrors(cudaStreamDestroy(it->second));
+    for(std::map<int,hipStream_t>::iterator it = _streams.begin(); it != _streams.end(); ++it) {
+        checkCudaErrors(hipStreamDestroy(it->second));
     }
     _streams.clear();
 }
 
-inline cudaStream_t ReducePeer::getStream(int deviceID) {
+inline hipStream_t ReducePeer::getStream(int deviceID) {
     if (deviceID < 0) {
         return NULL;
     }
     if (_streams.count(deviceID) == 0) {
         NVMatrix::setDeviceID(deviceID);
-        checkCudaErrors(cudaStreamCreateWithFlags(&_streams[deviceID], cudaStreamNonBlocking));
+        checkCudaErrors(hipStreamCreateWithFlags(&_streams[deviceID], hipStreamNonBlocking));
     }
     return _streams[deviceID];
 }

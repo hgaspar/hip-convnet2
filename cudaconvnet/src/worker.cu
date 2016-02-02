@@ -315,6 +315,6 @@ void DataGradWorker::_run() {
 //        
 //        _convNet->reset();
 //    }
-//    cudaThreadSynchronize();
+//    hipDeviceSynchronize();
 //    _convNet->getResultQueue().enqueue(new WorkResult(WorkResult::BATCH_DONE, batchCost));
 }

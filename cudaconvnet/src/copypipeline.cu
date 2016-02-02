@@ -30,14 +30,14 @@ ICopySegment::ICopySegment(IBroadcastNetwork& parent, int deviceID, Queue<int>* 
 
 ICopySegment::~ICopySegment() {
     if (_stream != NULL) {
-        checkCudaErrors(cudaStreamDestroy(_stream));
+        checkCudaErrors(hipStreamDestroy(_stream));
     }
 }
 
 void* ICopySegment::run() {
     assert(_execDeviceID != DEVICE_HOST);
     NVMatrix::setDeviceID(_execDeviceID);
-    checkCudaErrors(cudaStreamCreateWithFlags(&_stream, cudaStreamNonBlocking));
+    checkCudaErrors(hipStreamCreateWithFlags(&_stream, hipStreamNonBlocking));
     bool exit = false;
     while (!exit) {
         CopyMessage& msg = *_queue.dequeue();
@@ -345,7 +345,7 @@ TwoPeeringGPUsBroadcaster::TwoPeeringGPUsBroadcaster(std::set<int>& devices, int
 
 TwoPeeringGPUsBroadcaster::~TwoPeeringGPUsBroadcaster() {
     if (_constructed) {
-        checkCudaErrors(cudaStreamDestroy(_tgtStream));
+        checkCudaErrors(hipStreamDestroy(_tgtStream));
     }
 }
 
@@ -362,7 +362,7 @@ ISafeBroadcastNetwork& TwoPeeringGPUsBroadcaster::construct() {
     assert(!_constructed);
     int d = NVMatrix::getDeviceID();
     NVMatrix::setDeviceID(_tgtDeviceID);
-    checkCudaErrors(cudaStreamCreateWithFlags(&_tgtStream, cudaStreamNonBlocking));
+    checkCudaErrors(hipStreamCreateWithFlags(&_tgtStream, hipStreamNonBlocking));
     resetDeviceID(d);
     _constructed = true;
     return *this;

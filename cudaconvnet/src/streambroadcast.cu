@@ -24,7 +24,7 @@ using namespace std;
  * =====================
  */
 
-StreamBroadcast::StreamBroadcast(map<int,cudaStream_t>& streams) {
+StreamBroadcast::StreamBroadcast(map<int,hipStream_t>& streams) {
     _streams = streams;
 }
 
@@ -44,18 +44,18 @@ void StreamBroadcast::init(map<int, NVMatrix*>& mats) {
         if (_streams.count(it->first) == 0) {
             _ownedStreams.insert(it->first);
             NVMatrix::setDeviceID(it->first);
-            checkCudaErrors(cudaStreamCreateWithFlags(&_streams[it->first], cudaStreamNonBlocking));
+            checkCudaErrors(hipStreamCreateWithFlags(&_streams[it->first], hipStreamNonBlocking));
         }
     }
 }
 
 StreamBroadcast::~StreamBroadcast() {
     for (set<int>::const_iterator it = _ownedStreams.begin(); it != _ownedStreams.end(); ++it) {
-        checkCudaErrors(cudaStreamDestroy(_streams[*it]));
+        checkCudaErrors(hipStreamDestroy(_streams[*it]));
     }
 }
 
-cudaStream_t StreamBroadcast::getStream(int deviceID) {
+hipStream_t StreamBroadcast::getStream(int deviceID) {
     return _streams[deviceID];
 }
 

@@ -175,8 +175,8 @@ static std::map<int, std::vector<int> > deviceCPUs;
 std::vector<int>& getDeviceCPUs(int deviceID) {
     deviceCPULock.acquire();
     if (deviceCPUs.count(deviceID) == 0 && deviceID >= 0) {
-        struct cudaDeviceProp props;
-        checkCudaErrors(cudaGetDeviceProperties(&props, deviceID));
+        struct hipDeviceProp_t props;
+        checkCudaErrors(hipDeviceGetProperties(&props, deviceID));
         char pciString[13];
 
         sprintf(pciString, "%04x", props.pciDomainID);

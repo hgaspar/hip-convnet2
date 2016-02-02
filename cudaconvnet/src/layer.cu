@@ -74,7 +74,7 @@ Layer::~Layer() {
     }
 }
 
-cudaStream_t Layer::getStream() {
+hipStream_t Layer::getStream() {
     assert(getDeviceID() >= 0);
     return NVMatrix::getDefaultStream(getDeviceID());
 }
@@ -1416,8 +1416,8 @@ DataLayer::DataLayer(ConvNet* convNet, PyObject* paramsDict, int replicaID) : La
 }
 
 DataLayer::~DataLayer() {
-    for (map<int,cudaStream_t>::const_iterator it = _copyStreams.begin(); it != _copyStreams.end(); ++it) {
-        checkCudaErrors(cudaStreamDestroy(it->second));
+    for (map<int,hipStream_t>::const_iterator it = _copyStreams.begin(); it != _copyStreams.end(); ++it) {
+        checkCudaErrors(hipStreamDestroy(it->second));
     }
     for (std::map<int, MemoryView*>::iterator it = _memSrcActs2.begin(); it != _memSrcActs2.end(); ++it) {
         if (it->second->getMemorySource().truncate(_name)) {
@@ -1447,10 +1447,10 @@ void DataLayer::waitForCopyFinish() {
     }
 }
 
-cudaStream_t DataLayer::getCopyStream(int deviceID) {
+hipStream_t DataLayer::getCopyStream(int deviceID) {
     if (_copyStreams.count(deviceID) == 0) {
         NVMatrix::setDeviceID(deviceID);
-        checkCudaErrors(cudaStreamCreateWithFlags(&_copyStreams[deviceID], cudaStreamNonBlocking));
+        checkCudaErrors(hipStreamCreateWithFlags(&_copyStreams[deviceID], hipStreamNonBlocking));
     }
     return _copyStreams[deviceID];
 }
