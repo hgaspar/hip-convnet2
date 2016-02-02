@@ -1,3 +1,4 @@
+#include "hip_runtime.h"
 /*
  * Copyright 2014 Google Inc. All rights reserved.
  *
@@ -95,11 +96,11 @@ template<class Op>
 __global__ void kEltwiseTernaryOp(const float* a, const float* b, const float* c, float* const dest,
                                   const uint height, const uint width, uint strideA, const uint strideB, const uint strideC,
                                   const uint strideDest, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_THREADS_X + threadIdx.x;
-    const uint idxY = blockIdx.y * ELTWISE_THREADS_Y + threadIdx.y;
+    const uint idxX = hipBlockIdx_x * ELTWISE_THREADS_X + hipThreadIdx_x;
+    const uint idxY = hipBlockIdx_y * ELTWISE_THREADS_Y + hipThreadIdx_y;
 
-    for (uint y = idxY; y < height; y += gridDim.y * ELTWISE_THREADS_Y) {
-        for (uint x = idxX; x < width; x += gridDim.x * ELTWISE_THREADS_X) {
+    for (uint y = idxY; y < height; y += hipGridDim_y * ELTWISE_THREADS_Y) {
+        for (uint x = idxX; x < width; x += hipGridDim_x * ELTWISE_THREADS_X) {
             dest[y * strideDest + x] = op(a[y * strideA + x], b[y * strideB + x], c[y * strideC + x]);
         }
     }
@@ -107,9 +108,9 @@ __global__ void kEltwiseTernaryOp(const float* a, const float* b, const float* c
 
 template<class Op>
 __global__ void kEltwiseTernaryOpFlat(const float* a, const float* b, const float* c, float* const dest, const uint numElements, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_FLAT_THREADS_X + threadIdx.x;
+    const uint idxX = hipBlockIdx_x * ELTWISE_FLAT_THREADS_X + hipThreadIdx_x;
 
-    for (uint x = idxX; x < numElements; x += gridDim.x * ELTWISE_FLAT_THREADS_X) {
+    for (uint x = idxX; x < numElements; x += hipGridDim_x * ELTWISE_FLAT_THREADS_X) {
         dest[x] = op(a[x], b[x], c[x]);
     }
 }
@@ -130,33 +131,33 @@ __global__ void kEltwiseBinaryOpTrans(const float* a, const float* b, float* con
     __shared__ float shmem[ELTWISE_THREADS_X][ELTWISE_THREADS_X + 1];
 
     // x here because that's how much work we do
-    for (uint by = ELTWISE_THREADS_X * blockIdx.y; by < height; by += ELTWISE_THREADS_X * gridDim.y) {
-        for (uint bx = ELTWISE_THREADS_X * blockIdx.x; bx < width; bx += ELTWISE_THREADS_X * gridDim.x) {
-            const uint readX = by + threadIdx.x;
-            const uint readY = bx + threadIdx.y;
+    for (uint by = ELTWISE_THREADS_X * hipBlockIdx_y; by < height; by += ELTWISE_THREADS_X * hipGridDim_y) {
+        for (uint bx = ELTWISE_THREADS_X * hipBlockIdx_x; bx < width; bx += ELTWISE_THREADS_X * hipGridDim_x) {
+            const uint readX = by + hipThreadIdx_x;
+            const uint readY = bx + hipThreadIdx_y;
 
             for (uint y = 0; y < ELTWISE_THREADS_X; y+= ELTWISE_THREADS_Y) {
                 if (!checkBounds || (readX < height && readY + y < width)) {
                     if (aTrans) {
-                        shmem[threadIdx.x][threadIdx.y + y] = reverse ? op(b[(readY+y) * strideB + readX], a[(readY+y) * strideA + readX])
+                        shmem[hipThreadIdx_x][hipThreadIdx_y + y] = reverse ? op(b[(readY+y) * strideB + readX], a[(readY+y) * strideA + readX])
                                                                       : op(a[(readY+y) * strideA + readX], b[(readY+y) * strideB + readX]);
                     } else {
-                        shmem[threadIdx.x][threadIdx.y + y] = b[(readY+y) * strideB + readX];
+                        shmem[hipThreadIdx_x][hipThreadIdx_y + y] = b[(readY+y) * strideB + readX];
                     }
                 }
             }
             __syncthreads();
 
-            const uint writeX = bx + threadIdx.x;
-            const uint writeY = by + threadIdx.y;
+            const uint writeX = bx + hipThreadIdx_x;
+            const uint writeY = by + hipThreadIdx_y;
 
             for (uint y = 0; y < ELTWISE_THREADS_X; y+= ELTWISE_THREADS_Y) {
                 if(!checkBounds || (writeX < width && writeY + y < height)) {
                     if (aTrans) {
-                        dest[(writeY + y) * strideDest + writeX] = shmem[threadIdx.y + y][threadIdx.x];
+                        dest[(writeY + y) * strideDest + writeX] = shmem[hipThreadIdx_y + y][hipThreadIdx_x];
                     } else {
-                        dest[(writeY + y) * strideDest + writeX] = reverse ? op(shmem[threadIdx.y + y][threadIdx.x], a[(writeY + y) * strideA + writeX])
-                                                                           : op(a[(writeY + y) * strideA + writeX], shmem[threadIdx.y + y][threadIdx.x]);
+                        dest[(writeY + y) * strideDest + writeX] = reverse ? op(shmem[hipThreadIdx_y + y][hipThreadIdx_x], a[(writeY + y) * strideA + writeX])
+                                                                           : op(a[(writeY + y) * strideA + writeX], shmem[hipThreadIdx_y + y][hipThreadIdx_x]);
                     }
                 }
             }
@@ -167,11 +168,11 @@ __global__ void kEltwiseBinaryOpTrans(const float* a, const float* b, float* con
 template<class Op>
 __global__ void kEltwiseBinaryOp(const float* a, const float* b, float* const dest, const uint height, const uint width,
                              const uint strideA, const uint strideB, const uint strideDest, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_THREADS_X + threadIdx.x;
-    const uint idxY = blockIdx.y * ELTWISE_THREADS_Y + threadIdx.y;
+    const uint idxX = hipBlockIdx_x * ELTWISE_THREADS_X + hipThreadIdx_x;
+    const uint idxY = hipBlockIdx_y * ELTWISE_THREADS_Y + hipThreadIdx_y;
 
-    for (uint y = idxY; y < height; y += gridDim.y * ELTWISE_THREADS_Y) {
-        for (uint x = idxX; x < width; x += gridDim.x * ELTWISE_THREADS_X) {
+    for (uint y = idxY; y < height; y += hipGridDim_y * ELTWISE_THREADS_Y) {
+        for (uint x = idxX; x < width; x += hipGridDim_x * ELTWISE_THREADS_X) {
             dest[y * strideDest + x] = op(a[y * strideA + x], b[y * strideB + x]);
         }
     }
@@ -179,9 +180,9 @@ __global__ void kEltwiseBinaryOp(const float* a, const float* b, float* const de
 
 template<class Op>
 __global__ void kEltwiseBinaryOpFlat(const float* a, const float* b, float* const dest, const uint numElements, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_FLAT_THREADS_X + threadIdx.x;
+    const uint idxX = hipBlockIdx_x * ELTWISE_FLAT_THREADS_X + hipThreadIdx_x;
 
-    for (uint x = idxX; x < numElements; x += gridDim.x * ELTWISE_FLAT_THREADS_X) {
+    for (uint x = idxX; x < numElements; x += hipGridDim_x * ELTWISE_FLAT_THREADS_X) {
         dest[x] = op(a[x], b[x]);
     }
 }
@@ -196,22 +197,22 @@ __global__ void kEltwiseUnaryOpTrans(const float* a, float* const dest,
 
     __shared__ float shmem[ELTWISE_THREADS_X][ELTWISE_THREADS_X + 1];
 
-    for (uint by = ELTWISE_THREADS_X * blockIdx.y; by < height; by += ELTWISE_THREADS_X * gridDim.y) {
-        for (uint bx = ELTWISE_THREADS_X * blockIdx.x; bx < width; bx += ELTWISE_THREADS_X * gridDim.x) {
-            const uint readX = by + threadIdx.x;
-            const uint readY = bx + threadIdx.y;
+    for (uint by = ELTWISE_THREADS_X * hipBlockIdx_y; by < height; by += ELTWISE_THREADS_X * hipGridDim_y) {
+        for (uint bx = ELTWISE_THREADS_X * hipBlockIdx_x; bx < width; bx += ELTWISE_THREADS_X * hipGridDim_x) {
+            const uint readX = by + hipThreadIdx_x;
+            const uint readY = bx + hipThreadIdx_y;
             for (uint y = 0; y < ELTWISE_THREADS_X; y+= ELTWISE_THREADS_Y) {
                 if (!checkBounds || (readX < height && readY + y < width)) {
-                    shmem[threadIdx.x][threadIdx.y + y] = op(a[(readY + y) * strideA + readX]);
+                    shmem[hipThreadIdx_x][hipThreadIdx_y + y] = op(a[(readY + y) * strideA + readX]);
                 }
             }
             __syncthreads();
 
-            const uint writeX = bx + threadIdx.x;
-            const uint writeY = by + threadIdx.y;
+            const uint writeX = bx + hipThreadIdx_x;
+            const uint writeY = by + hipThreadIdx_y;
             for (uint y = 0; y < ELTWISE_THREADS_X; y+= ELTWISE_THREADS_Y) {
                 if(!checkBounds || (writeX < width && writeY + y < height)) {
-                    dest[(writeY + y) * strideDest + writeX] = shmem[threadIdx.y + y][threadIdx.x];
+                    dest[(writeY + y) * strideDest + writeX] = shmem[hipThreadIdx_y + y][hipThreadIdx_x];
 
                 }
             }
@@ -222,9 +223,9 @@ __global__ void kEltwiseUnaryOpTrans(const float* a, float* const dest,
 
 template<class Op>
 __global__ void kEltwiseUnaryOpFlat(const float* a, float* const dest, const uint numElements, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_FLAT_THREADS_X + threadIdx.x;
+    const uint idxX = hipBlockIdx_x * ELTWISE_FLAT_THREADS_X + hipThreadIdx_x;
 
-    for (uint x = idxX; x < numElements; x += gridDim.x * ELTWISE_FLAT_THREADS_X) {
+    for (uint x = idxX; x < numElements; x += hipGridDim_x * ELTWISE_FLAT_THREADS_X) {
         dest[x] = op(a[x]);
     }
 }
@@ -232,11 +233,11 @@ __global__ void kEltwiseUnaryOpFlat(const float* a, float* const dest, const uin
 template<class Op>
 __global__ void kEltwiseUnaryOp(const float* a, float* const dest, const uint height, const uint width,
                                 const uint strideA, const uint strideDest, Op op) {
-    const uint idxX = blockIdx.x * ELTWISE_THREADS_X + threadIdx.x;
-    const uint idxY = blockIdx.y * ELTWISE_THREADS_Y + threadIdx.y;
+    const uint idxX = hipBlockIdx_x * ELTWISE_THREADS_X + hipThreadIdx_x;
+    const uint idxY = hipBlockIdx_y * ELTWISE_THREADS_Y + hipThreadIdx_y;
 
-    for (uint y = idxY; y < height; y += gridDim.y * ELTWISE_THREADS_Y) {
-        for (uint x = idxX; x < width; x += gridDim.x * ELTWISE_THREADS_X) {
+    for (uint y = idxY; y < height; y += hipGridDim_y * ELTWISE_THREADS_Y) {
+        for (uint x = idxX; x < width; x += hipGridDim_x * ELTWISE_THREADS_X) {
             dest[y * strideDest + x] = op(a[y * strideA + x]);
         }
     }
@@ -249,19 +250,19 @@ template <class Op>
 __global__ void kRowVectorOp(const float* mat, const float* vec, float* const tgtMat, const uint width, const uint height,
                              const uint matStride, const uint tgtStride, Op op) {
     __shared__ float shVec[ADD_VEC_THREADS_X];
-    const uint bx = ADD_VEC_THREADS_X * blockIdx.x;
-    const uint by = ADD_VEC_THREADS_Y * blockIdx.y;
+    const uint bx = ADD_VEC_THREADS_X * hipBlockIdx_x;
+    const uint by = ADD_VEC_THREADS_Y * hipBlockIdx_y;
 
-    for (uint x = bx; x < width; x += gridDim.x * ADD_VEC_THREADS_X) {
+    for (uint x = bx; x < width; x += hipGridDim_x * ADD_VEC_THREADS_X) {
         __syncthreads();
-        if (x + threadIdx.x < width && threadIdx.y == 0) {
-            shVec[threadIdx.x] = vec[x + threadIdx.x];
+        if (x + hipThreadIdx_x < width && hipThreadIdx_y == 0) {
+            shVec[hipThreadIdx_x] = vec[x + hipThreadIdx_x];
         }
         __syncthreads();
 
-        if (x + threadIdx.x < width) {
-            for (uint y = by + threadIdx.y; y < height; y += gridDim.y * ADD_VEC_THREADS_Y) {
-                tgtMat[y * tgtStride + x + threadIdx.x] = op(mat[y * matStride + x + threadIdx.x], shVec[threadIdx.x]);
+        if (x + hipThreadIdx_x < width) {
+            for (uint y = by + hipThreadIdx_y; y < height; y += hipGridDim_y * ADD_VEC_THREADS_Y) {
+                tgtMat[y * tgtStride + x + hipThreadIdx_x] = op(mat[y * matStride + x + hipThreadIdx_x], shVec[hipThreadIdx_x]);
             }
         }
     }
@@ -275,24 +276,24 @@ __global__ void kColVectorOp(float* mat, float* vec, float* tgtMat,
                              const uint width, const uint height,
                              const uint matStride, const uint tgtStride, Op op) {
     __shared__ float shVec[ADD_VEC_THREADS_Y];
-    const uint by = ADD_VEC_THREADS_Y * blockIdx.y;
-    const uint bx = ADD_VEC_THREADS_X * blockIdx.x;
-    const uint tidx = ADD_VEC_THREADS_X * threadIdx.y + threadIdx.x;
+    const uint by = ADD_VEC_THREADS_Y * hipBlockIdx_y;
+    const uint bx = ADD_VEC_THREADS_X * hipBlockIdx_x;
+    const uint tidx = ADD_VEC_THREADS_X * hipThreadIdx_y + hipThreadIdx_x;
     
-    mat += threadIdx.y * matStride;
+    mat += hipThreadIdx_y * matStride;
     vec += tidx;
-    tgtMat += threadIdx.y * tgtStride;
+    tgtMat += hipThreadIdx_y * tgtStride;
 
-    for (uint y = by; y < height; y += gridDim.y * ADD_VEC_THREADS_Y) {
+    for (uint y = by; y < height; y += hipGridDim_y * ADD_VEC_THREADS_Y) {
         __syncthreads();
         if (y + tidx < height && tidx < ADD_VEC_THREADS_Y) {
             shVec[tidx] = vec[y];
         }
         __syncthreads();
 
-        if (y + threadIdx.y < height) {
-            for (uint x = bx + threadIdx.x; x < width; x += gridDim.x * ADD_VEC_THREADS_X) {
-                tgtMat[(y) * tgtStride + x] = op(mat[(y) * matStride + x], shVec[threadIdx.y]);
+        if (y + hipThreadIdx_y < height) {
+            for (uint x = bx + hipThreadIdx_x; x < width; x += hipGridDim_x * ADD_VEC_THREADS_X) {
+                tgtMat[(y) * tgtStride + x] = op(mat[(y) * matStride + x], shVec[hipThreadIdx_y]);
             }
         }
     }
@@ -304,50 +305,50 @@ __global__ void kColVectorOp(float* mat, float* vec, float* tgtMat,
  */
 template<class Agg, class UnaryOp, class BinaryOp, int blockSize>
 __global__ void kAggRows(const float* mat, float* matSum, const uint width, const uint height, const uint sumWidth, Agg agg, UnaryOp uop, BinaryOp bop) {
-    const int idxX = blockIdx.x * blockSize*2 + threadIdx.x;
+    const int idxX = hipBlockIdx_x * blockSize*2 + hipThreadIdx_x;
 
     __shared__ float accum[blockSize*2];
 
-    matSum += blockIdx.y * sumWidth + blockIdx.x;
+    matSum += hipBlockIdx_y * sumWidth + hipBlockIdx_x;
     /*
      * Here it's important to make sure that all threads in a block call __syncthreads,
      * so I have even the redundant threads (for which idxX >= width) enter this loop
      * just so that they may call __syncthreads at the appropriate times.
      */
-    mat += width * blockIdx.y + idxX;
+    mat += width * hipBlockIdx_y + idxX;
 
-    accum[threadIdx.x] = agg.getBaseValue();
-    accum[threadIdx.x + blockSize] = agg.getBaseValue();
-    for (uint idxY = blockIdx.y; idxY < height; idxY += gridDim.y) {
+    accum[hipThreadIdx_x] = agg.getBaseValue();
+    accum[hipThreadIdx_x + blockSize] = agg.getBaseValue();
+    for (uint idxY = hipBlockIdx_y; idxY < height; idxY += hipGridDim_y) {
         if (idxX < width) {
-            accum[threadIdx.x] = uop(mat[0]);
+            accum[hipThreadIdx_x] = uop(mat[0]);
             if(idxX + blockSize < width)
-                accum[threadIdx.x + blockSize] = uop(mat[blockSize]);
+                accum[hipThreadIdx_x + blockSize] = uop(mat[blockSize]);
         }
         if (blockSize >= 512) {
             __syncthreads();
-            if (threadIdx.x < 512)
-                accum[threadIdx.x] = agg(accum[threadIdx.x], accum[threadIdx.x + 512]);
+            if (hipThreadIdx_x < 512)
+                accum[hipThreadIdx_x] = agg(accum[hipThreadIdx_x], accum[hipThreadIdx_x + 512]);
         }
         if (blockSize >= 256) {
             __syncthreads();
-            if (threadIdx.x < 256)
-                accum[threadIdx.x] = agg(accum[threadIdx.x],accum[threadIdx.x + 256]);
+            if (hipThreadIdx_x < 256)
+                accum[hipThreadIdx_x] = agg(accum[hipThreadIdx_x],accum[hipThreadIdx_x + 256]);
         }
         if (blockSize >= 128) {
             __syncthreads();
-            if (threadIdx.x < 128)
-                accum[threadIdx.x] = agg(accum[threadIdx.x],accum[threadIdx.x + 128]);
+            if (hipThreadIdx_x < 128)
+                accum[hipThreadIdx_x] = agg(accum[hipThreadIdx_x],accum[hipThreadIdx_x + 128]);
         }
         if (blockSize >= 64) {
             __syncthreads();
-            if (threadIdx.x < 64)
-                accum[threadIdx.x] = agg(accum[threadIdx.x],accum[threadIdx.x + 64]);
+            if (hipThreadIdx_x < 64)
+                accum[hipThreadIdx_x] = agg(accum[hipThreadIdx_x],accum[hipThreadIdx_x + 64]);
         }
 
         __syncthreads();
-        volatile float* myAccum = &accum[threadIdx.x];
-        if (threadIdx.x < 32) { // executed only by first warp
+        volatile float* myAccum = &accum[hipThreadIdx_x];
+        if (hipThreadIdx_x < 32) { // executed only by first warp
             myAccum[0] = agg(myAccum[0], myAccum[32]);
             myAccum[0] = agg(myAccum[0], myAccum[16]);
             myAccum[0] = agg(myAccum[0], myAccum[8]);
@@ -356,27 +357,27 @@ __global__ void kAggRows(const float* mat, float* matSum, const uint width, cons
             myAccum[0] = agg(myAccum[0], myAccum[1]);
         }
 
-        if (threadIdx.x == 0) {
+        if (hipThreadIdx_x == 0) {
             matSum[0] = bop(matSum[0], myAccum[0]);
-            matSum += gridDim.y * sumWidth;
+            matSum += hipGridDim_y * sumWidth;
         }
         __syncthreads();
-        mat += width * gridDim.y;
+        mat += width * hipGridDim_y;
     }
 }
 
 template<class Agg, class BinaryOp>
 __global__ void kAggRows_wholerow(const float* mat, float* matSum, const uint width, const uint height, Agg agg, BinaryOp op) {
-    const int tidx = threadIdx.x;
+    const int tidx = hipThreadIdx_x;
 
     __shared__ float accum[AWR_NUM_THREADS];
     volatile float* vMyAccum = &accum[tidx];
     float* myAccum = &accum[tidx];
     
-    matSum += blockIdx.y;
-    mat += width * blockIdx.y;
+    matSum += hipBlockIdx_y;
+    mat += width * hipBlockIdx_y;
 
-    for (uint idxY = blockIdx.y; idxY < height; idxY += gridDim.y) {
+    for (uint idxY = hipBlockIdx_y; idxY < height; idxY += hipGridDim_y) {
         myAccum[0] = agg.getBaseValue();
         for (uint x = tidx; x < width; x += AWR_NUM_THREADS) {
             myAccum[0] = agg(myAccum[0], mat[x]);
@@ -399,11 +400,11 @@ __global__ void kAggRows_wholerow(const float* mat, float* matSum, const uint wi
 
             if (tidx == 0) {
                 matSum[0] = op(matSum[0], vMyAccum[0]);
-                matSum += gridDim.y;
+                matSum += hipGridDim_y;
             }
         }
         __syncthreads();
-        mat += width * gridDim.y;
+        mat += width * hipGridDim_y;
     }
 }
 
@@ -414,7 +415,7 @@ __global__ void kAggRows_wholerow(const float* mat, float* matSum, const uint wi
 template<class Agg, class UnaryOp, class BinaryOp>
 __global__ void kAggRows_wholerow_nosync(const float* mat, float* matSum, const uint width, const uint height,
                                          Agg agg, UnaryOp uop, BinaryOp bop) {
-    const uint tidx = threadIdx.x;
+    const uint tidx = hipThreadIdx_x;
     const uint warpIdx = tidx / WARP_SIZE;
     const uint lane = tidx % WARP_SIZE;
     
@@ -424,8 +425,8 @@ __global__ void kAggRows_wholerow_nosync(const float* mat, float* matSum, const 
     float* myAccum = &accum[warpIdx * (WARP_SIZE + 1) + lane];
     float* myFinalAccum = &finalAccum[tidx];
     //volatile float* vMyAccum = &accum[warpIdx * (WARP_SIZE + 1) + lane];
-    matSum += blockIdx.y;
-    mat += width * blockIdx.y;
+    matSum += hipBlockIdx_y;
+    mat += width * hipBlockIdx_y;
 
     float rAccum = agg.getBaseValue(); // cache in register, a bit faster than shmem
     #pragma unroll 32
@@ -452,7 +453,7 @@ __global__ void kAggRows_wholerow_nosync(const float* mat, float* matSum, const 
         }
         if (tidx == 0) {
             matSum[0] = bop(matSum[0], myFinalAccum[0]);
-            matSum += gridDim.y;
+            matSum += hipGridDim_y;
         }
     }
 }
@@ -468,16 +469,16 @@ __global__ void kAggShortRows(const float* mat, float* matSum, const uint width,
     const uint shmemX = THREADS_X + 1;
     __shared__ float shmem[AGG_SHORT_ROWS_THREADS_Y*shmemX];
 
-    const uint tidx = threadIdx.y * THREADS_X + threadIdx.x;
-    const uint ty = LOOPS_X == 1 ? tidx / width : threadIdx.y; // when loops==1, width is gonna be smaller than block x dim
-    const uint tx = LOOPS_X == 1 ? tidx % width : threadIdx.x;
-    const uint bidx = blockIdx.y * gridDim.x + blockIdx.x;
+    const uint tidx = hipThreadIdx_y * THREADS_X + hipThreadIdx_x;
+    const uint ty = LOOPS_X == 1 ? tidx / width : hipThreadIdx_y; // when loops==1, width is gonna be smaller than block x dim
+    const uint tx = LOOPS_X == 1 ? tidx % width : hipThreadIdx_x;
+    const uint bidx = hipBlockIdx_y * hipGridDim_x + hipBlockIdx_x;
     const uint blockRowIdx = bidx * AGG_SHORT_ROWS_LOOPS_Y * AGG_SHORT_ROWS_THREADS_Y;
     float* shmemWrite = shmem + MUL24(ty, shmemX) + tx;
     matSum += blockRowIdx + tidx;
-//    shmem[MUL24(threadIdx.y, shmemX) + threadIdx.x] = 0;
+//    shmem[MUL24(hipThreadIdx_y, shmemX) + hipThreadIdx_x] = 0;
     mat += width * blockRowIdx + MUL24(ty, width) + tx;
-    float* shmemWriteZeros = &shmem[MUL24(threadIdx.y,shmemX) + threadIdx.x];
+    float* shmemWriteZeros = &shmem[MUL24(hipThreadIdx_y,shmemX) + hipThreadIdx_x];
 
     bool doAgg = tidx < AGG_SHORT_ROWS_THREADS_Y ;
 
@@ -524,27 +525,27 @@ __global__ void kAggShortRows2(const float* mat, float* matSum, const uint width
     const uint shmemX = AGG_SHORT_ROWS_THREADS_X + 1;
     __shared__ float shmem[AGG_SHORT_ROWS_THREADS_Y*shmemX];
     const uint LOOPS_X = DIVUP(width, AGG_SHORT_ROWS_THREADS_X);
-    const uint tidx = threadIdx.y * AGG_SHORT_ROWS_THREADS_X + threadIdx.x;
+    const uint tidx = hipThreadIdx_y * AGG_SHORT_ROWS_THREADS_X + hipThreadIdx_x;
 
-    const uint bidx = blockIdx.y * gridDim.x + blockIdx.x;
+    const uint bidx = hipBlockIdx_y * hipGridDim_x + hipBlockIdx_x;
     const uint blockRowIdx = bidx * AGG_SHORT_ROWS_LOOPS_Y * AGG_SHORT_ROWS_THREADS_Y;
 
-    float* shmemWrite = shmem + MUL24(threadIdx.y, shmemX) + threadIdx.x;
+    float* shmemWrite = shmem + MUL24(hipThreadIdx_y, shmemX) + hipThreadIdx_x;
     matSum += blockRowIdx + tidx;
-//    shmem[MUL24(threadIdx.y, shmemX) + threadIdx.x] = 0;
-    mat += width * blockRowIdx + MUL24(threadIdx.y, width) + threadIdx.x;
+//    shmem[MUL24(hipThreadIdx_y, shmemX) + hipThreadIdx_x] = 0;
+    mat += width * blockRowIdx + MUL24(hipThreadIdx_y, width) + hipThreadIdx_x;
 
     bool doAgg = tidx < AGG_SHORT_ROWS_THREADS_Y;
     if(blockRowIdx < height) {
         for (uint y = 0; y < AGG_SHORT_ROWS_LOOPS_Y*AGG_SHORT_ROWS_THREADS_Y; y += AGG_SHORT_ROWS_THREADS_Y) {
             doAgg &= tidx + y + blockRowIdx < height;
-            const bool heightIdxOK = threadIdx.y + y + blockRowIdx < height;
+            const bool heightIdxOK = hipThreadIdx_y + y + blockRowIdx < height;
             float accum = agg.getBaseValue();
             shmemWrite[0] = agg.getBaseValue();
 
             for(uint x = 0; x < LOOPS_X * AGG_SHORT_ROWS_THREADS_X; x+= AGG_SHORT_ROWS_THREADS_X) {
 //                __syncthreads();
-                if (heightIdxOK && x + threadIdx.x < width) {
+                if (heightIdxOK && x + hipThreadIdx_x < width) {
                     shmemWrite[0] = agg(uop(mat[x]), shmemWrite[0]);
                 }
             }
@@ -573,7 +574,7 @@ __global__ void kAggShortRows2(const float* mat, float* matSum, const uint width
  */
 template <class Agg, class UnaryOp, class BinaryOp>
 __global__ void kDumbAggCols(cudaTextureObject_t mat, float* const vec, const uint width, const uint height, Agg agg, UnaryOp uop, BinaryOp bop) {
-    const uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
     if (idx < width) {
         float mx = agg.getBaseValue();
         for (uint j = 0; j < height; j++) {
@@ -588,50 +589,50 @@ __global__ void kDumbAggCols(cudaTextureObject_t mat, float* const vec, const ui
  */
 template <class Agg, class UnaryOp>
 __global__ void kAggCols(cudaTextureObject_t mat, float* const vec, const uint width, const uint height, const uint sumLength, Agg agg, UnaryOp op) {
-    const uint idxX = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint idxY = blockIdx.y * sumLength;
+    const uint idxX = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
+    const uint idxY = hipBlockIdx_y * sumLength;
     if (idxX < width) {
         float mx = agg.getBaseValue();
         for (uint j = idxY; j < min(height,idxY + sumLength); j++) {
             mx = agg(op(tex1Dfetch<float>(mat, j * width + idxX)), mx);
         }
-        vec[blockIdx.y * width + idxX] = mx;
+        vec[hipBlockIdx_y * width + idxX] = mx;
     }
 }
 
 template <class Agg>
 __global__ void kTotalAgg(const float* a, float* const target, const uint numElements, Agg agg) {
     __shared__ float shmem[DP_BLOCKSIZE];
-    uint eidx = DP_BLOCKSIZE * blockIdx.x + threadIdx.x;
-    shmem[threadIdx.x] = agg.getBaseValue();
-    if (eidx < gridDim.x * DP_BLOCKSIZE) {
-        for (; eidx < numElements; eidx += gridDim.x * DP_BLOCKSIZE) {
-            shmem[threadIdx.x] = agg(shmem[threadIdx.x], a[eidx]);
+    uint eidx = DP_BLOCKSIZE * hipBlockIdx_x + hipThreadIdx_x;
+    shmem[hipThreadIdx_x] = agg.getBaseValue();
+    if (eidx < hipGridDim_x * DP_BLOCKSIZE) {
+        for (; eidx < numElements; eidx += hipGridDim_x * DP_BLOCKSIZE) {
+            shmem[hipThreadIdx_x] = agg(shmem[hipThreadIdx_x], a[eidx]);
         }
     }
     __syncthreads();
-    if (threadIdx.x < 256) {
-        shmem[threadIdx.x] = agg(shmem[threadIdx.x], shmem[threadIdx.x + 256]);
+    if (hipThreadIdx_x < 256) {
+        shmem[hipThreadIdx_x] = agg(shmem[hipThreadIdx_x], shmem[hipThreadIdx_x + 256]);
     }
     __syncthreads();
-    if (threadIdx.x < 128) {
-        shmem[threadIdx.x] = agg(shmem[threadIdx.x], shmem[threadIdx.x + 128]);
+    if (hipThreadIdx_x < 128) {
+        shmem[hipThreadIdx_x] = agg(shmem[hipThreadIdx_x], shmem[hipThreadIdx_x + 128]);
     }
     __syncthreads();
-    if (threadIdx.x < 64) {
-        shmem[threadIdx.x] = agg(shmem[threadIdx.x], shmem[threadIdx.x + 64]);
+    if (hipThreadIdx_x < 64) {
+        shmem[hipThreadIdx_x] = agg(shmem[hipThreadIdx_x], shmem[hipThreadIdx_x + 64]);
     }
     __syncthreads();
-    if (threadIdx.x < 32) {
-        volatile float* mysh = &shmem[threadIdx.x];
+    if (hipThreadIdx_x < 32) {
+        volatile float* mysh = &shmem[hipThreadIdx_x];
         *mysh = agg(*mysh, mysh[32]);
         *mysh = agg(*mysh, mysh[16]);
         *mysh = agg(*mysh, mysh[8]);
         *mysh = agg(*mysh, mysh[4]);
         *mysh = agg(*mysh, mysh[2]);
         *mysh = agg(*mysh, mysh[1]);
-        if (threadIdx.x == 0) {
-            target[blockIdx.x] = *mysh;
+        if (hipThreadIdx_x == 0) {
+            target[hipBlockIdx_x] = *mysh;
         }
     }
 }
@@ -704,7 +705,7 @@ public:
 
 template<class Randomizer>
 __global__ void kUnaryRandomize(float* data, float* targets, curandState* state, const uint numElements, Randomizer rnd) {
-    const uint tidx = NUM_RND_THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;
+    const uint tidx = NUM_RND_THREADS_PER_BLOCK * hipBlockIdx_x + hipThreadIdx_x;
     curandState localState = state[tidx];
 
     for (uint i = tidx; i < numElements; i += NUM_RND_STREAMS) {
@@ -715,7 +716,7 @@ __global__ void kUnaryRandomize(float* data, float* targets, curandState* state,
 
 template<class Randomizer>
 __global__ void kBinaryRandomize(float* data, float* data2, float* targets, curandState* state, const uint numElements, Randomizer rnd) {
-    const uint tidx = NUM_RND_THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;
+    const uint tidx = NUM_RND_THREADS_PER_BLOCK * hipBlockIdx_x + hipThreadIdx_x;
     curandState localState = state[tidx];
 
     for (uint i = tidx; i < numElements; i += NUM_RND_STREAMS) {

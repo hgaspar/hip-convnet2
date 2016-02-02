@@ -1,3 +1,4 @@
+#include "hip_runtime.h"
 /*
  * Copyright 2014 Google Inc. All rights reserved.
  *
@@ -41,7 +42,7 @@ pthread_mutex_t* NVMatrix::_rndMutex = makeMutex();
 pthread_mutex_t* NVMatrix::_cublasMutex = makeMutex();
 pthread_mutex_t* NVMatrix::_streamMutex = makeMutex();
 std::map<int,cublasHandle_t> NVMatrix::_cublasHandles;
-std::map<int,cudaStream_t> NVMatrix::_defaultStreams;
+std::map<int,hipStream_t> NVMatrix::_defaultStreams;
 
 pthread_mutex_t* NVMatrix::makeMutex() {
     pthread_mutex_t* m = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
@@ -148,7 +149,7 @@ void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget) {
     copyFromHost(hostMatrix, resizeTarget, getDefaultStream());
 }
 
-void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, cudaStream_t stream) {
+void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) {
     if (resizeTarget) {
         resize(hostMatrix);
     } else {
@@ -171,7 +172,7 @@ void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget) const {
     copyToHost(hostMatrix, resizeTarget, getDefaultStream());
 }
 
-void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, cudaStream_t stream) const {
+void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) const {
     if (resizeTarget) {
         hostMatrix.resize(_numRows, _numCols);
     } else {
@@ -190,7 +191,7 @@ void NVMatrix::copy(NVMatrix& dest) const {
     copy(dest, getDefaultStream());
 }
 
-void NVMatrix::copy(NVMatrix& dest, cudaStream_t stream) const {
+void NVMatrix::copy(NVMatrix& dest, hipStream_t stream) const {
     if (&dest != this) {
         if (!isSameDims(dest)) {
             dest.resize(*this);
@@ -209,7 +210,7 @@ void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target) {
     rightMult(b, scaleAB, target, getDefaultStream());
 }
 
-void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target, cudaStream_t stream) {
+void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target, hipStream_t stream) {
 //    if(&target != this && &target != &b) {
 //        target.resize(_numRows, b.getNumCols());
 //        target.setTrans(true);
@@ -233,7 +234,7 @@ void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scale
  * This will only work if this matrix is in column-major order! In other words,
  * if isTrans() returns true.
  */
-void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB, cudaStream_t stream) {
+void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB, hipStream_t stream) {
     assert(a.getNumCols() == b.getNumRows());
 
     if (scaleThis == 0) {
@@ -272,7 +273,7 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
     batchedMatrixMultiply(a, b, target, scaleTarget, scaleAB, getDefaultStream());
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, cudaStream_t stream,
+void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream,
                                      const float** aPtrsDev, const float** bPtrsDev, float** tgtPtrsDev) {
     assert(a.size() == b.size());
     assert(a.size() == target.size());
@@ -296,7 +297,7 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
     }
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, cudaStream_t stream) {
+void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream) {
     assert(a.size() == b.size());
     assert(a.size() == target.size() || target.size() == 0);
 
@@ -316,24 +317,24 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
 
 //        const float** aPtrsDev, **bPtrsDev;
 //        float **tgtPtrsDev;
-//        checkCudaErrors(cudaMalloc(&aPtrsDev, batch * sizeof(float*)));
-//        checkCudaErrors(cudaMalloc(&bPtrsDev, batch * sizeof(float*)));
-//        checkCudaErrors(cudaMalloc(&tgtPtrsDev, batch * sizeof(float*)));
+//        checkCudaErrors(hipMalloc(&aPtrsDev, batch * sizeof(float*)));
+//        checkCudaErrors(hipMalloc(&bPtrsDev, batch * sizeof(float*)));
+//        checkCudaErrors(hipMalloc(&tgtPtrsDev, batch * sizeof(float*)));
         MemorySegment* aPtrsDev = DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).malloc(batch * sizeof(float*));
         MemorySegment* bPtrsDev = DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).malloc(batch * sizeof(float*));
         MemorySegment* tgtPtrsDev = DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).malloc(batch * sizeof(float*));
 
-        checkCudaErrors(cudaMemcpyAsync(aPtrsDev, aPtrs, batch * sizeof(float*), cudaMemcpyHostToDevice, stream));
-        checkCudaErrors(cudaMemcpyAsync(bPtrsDev, bPtrs, batch * sizeof(float*), cudaMemcpyHostToDevice, stream));
-        checkCudaErrors(cudaMemcpyAsync(tgtPtrsDev, tgtPtrs, batch * sizeof(float*), cudaMemcpyHostToDevice, stream));
+        checkCudaErrors(hipMemcpyAsync(aPtrsDev, aPtrs, batch * sizeof(float*), hipMemcpyHostToDevice, stream));
+        checkCudaErrors(hipMemcpyAsync(bPtrsDev, bPtrs, batch * sizeof(float*), hipMemcpyHostToDevice, stream));
+        checkCudaErrors(hipMemcpyAsync(tgtPtrsDev, tgtPtrs, batch * sizeof(float*), hipMemcpyHostToDevice, stream));
 
         batchedMatrixMultiply(a, b, target, scaleTarget, scaleAB, stream, const_cast<const float**>(aPtrsDev->getData<float*>()),
                                                                           const_cast<const float**>(bPtrsDev->getData<float*>()),
                                                                           tgtPtrsDev->getData<float*>());
 
-//        checkCudaErrors(cudaFree(aPtrsDev));
-//        checkCudaErrors(cudaFree(bPtrsDev));
-//        checkCudaErrors(cudaFree(tgtPtrsDev));
+//        checkCudaErrors(hipFree(aPtrsDev));
+//        checkCudaErrors(hipFree(bPtrsDev));
+//        checkCudaErrors(hipFree(tgtPtrsDev));
         DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).free(aPtrsDev);
         DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).free(bPtrsDev);
         DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).free(tgtPtrsDev);
@@ -346,14 +347,14 @@ void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd) {
 }
 
 template <class Randomizer>
-void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd, cudaStream_t stream) {
+void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd, hipStream_t stream) {
     assert(isRndInitialized());
     assert(isContiguous() && target.isContiguous());
     if (!isSameDims(target)) {
         target.resize(*this);
     }
     assert(isTrans() == target.isTrans());
-    kUnaryRandomize<<<NUM_RND_BLOCKS,NUM_RND_THREADS_PER_BLOCK, 0, stream>>>(getDevData(), target.getDevData(), getCurandState(), getNumElements(), rnd);
+    hipLaunchKernel(HIP_KERNEL_NAME(kUnaryRandomize), dim3(NUM_RND_BLOCKS), dim3(NUM_RND_THREADS_PER_BLOCK), 0, stream, getDevData(), target.getDevData(), getCurandState(), getNumElements(), rnd);
     getLastCudaError("kUnaryRandomize: Kernel execution failed");
 }
 
@@ -363,7 +364,7 @@ void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rn
 }
 
 template <class Randomizer>
-void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd, cudaStream_t stream) {
+void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd, hipStream_t stream) {
     assert(isRndInitialized());
     assert(isContiguous() && data2.isContiguous() && target.isContiguous());
     assert(isSameDims(data2));
@@ -372,7 +373,7 @@ void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rn
         target.resize(*this);
     }
     assert(isTrans() == target.isTrans());
-    kBinaryRandomize<<<NUM_RND_BLOCKS,NUM_RND_THREADS_PER_BLOCK, 0, stream>>>(getDevData(), data2.getDevData(), target.getDevData(), getCurandState(), getNumElements(), rnd);
+    hipLaunchKernel(HIP_KERNEL_NAME(kBinaryRandomize), dim3(NUM_RND_BLOCKS), dim3(NUM_RND_THREADS_PER_BLOCK), 0, stream, getDevData(), data2.getDevData(), target.getDevData(), getCurandState(), getNumElements(), rnd);
     getLastCudaError("kBinaryRandomize: Kernel execution failed");
 }
 
@@ -380,7 +381,7 @@ void NVMatrix::initRandom(unsigned long long seed, int numStreams) {
     NVMatrix::initRandom(seed, numStreams, NVMatrix::getDefaultStream());
 }
 
-void NVMatrix::initRandom(unsigned long long seed, int numStreams, cudaStream_t stream) {
+void NVMatrix::initRandom(unsigned long long seed, int numStreams, hipStream_t stream) {
 //    printf("init random on device %d\n", getDeviceID());
     pthread_mutex_lock(_rndMutex);
     assert(!isRndInitialized(true));
@@ -388,9 +389,9 @@ void NVMatrix::initRandom(unsigned long long seed, int numStreams, cudaStream_t 
 //    _rndDevStates[d] = NULL;
     _rndDevThreads[d] = numStreams;
     _rndDevStates[d] = DEVICE_MEMORY_MANAGER::getInstance(d).malloc(numStreams * sizeof(curandState));
-//    checkCudaErrors(cudaMalloc((void **)&_rndDevStates[d], numStreams * sizeof(curandState)));
+//    checkCudaErrors(hipMalloc((void **)&_rndDevStates[d], numStreams * sizeof(curandState)));
     pthread_mutex_unlock(_rndMutex);
-    kSetupCurand<<<NUM_RND_BLOCKS, NUM_RND_THREADS_PER_BLOCK, 0, stream>>>(getCurandState(), 1 + seed*2); // so there's no chance it'll be correlated with the other one
+    hipLaunchKernel(HIP_KERNEL_NAME(kSetupCurand), dim3(NUM_RND_BLOCKS), dim3(NUM_RND_THREADS_PER_BLOCK), 0, stream, getCurandState(), 1 + seed*2); // so there's no chance it'll be correlated with the other one
     getLastCudaError("kSetupCurand: Kernel execution failed");
 }
 
@@ -435,20 +436,20 @@ cublasHandle_t NVMatrix::getCublasHandle(int deviceID) {
     return h;
 }
 
-cudaStream_t NVMatrix::getDefaultStream() {
+hipStream_t NVMatrix::getDefaultStream() {
     return getDefaultStream(NVMatrix::getDeviceID());
 }
 
-cudaStream_t NVMatrix::getDefaultStream(int deviceID) {
+hipStream_t NVMatrix::getDefaultStream(int deviceID) {
     if (deviceID >= 0) {
         pthread_mutex_lock(_streamMutex);
         if (_defaultStreams.count(deviceID) == 0) {
             int oldDeviceID = getDeviceID();
             NVMatrix::setDeviceID(deviceID);
-            checkCudaErrors(cudaStreamCreateWithFlags(&_defaultStreams[deviceID], cudaStreamNonBlocking));
+            checkCudaErrors(hipStreamCreateWithFlags(&_defaultStreams[deviceID], hipStreamNonBlocking));
             NVMatrix::setDeviceID(oldDeviceID);
         }
-        cudaStream_t s = _defaultStreams[deviceID];
+        hipStream_t s = _defaultStreams[deviceID];
         pthread_mutex_unlock(_streamMutex);
         return s;
     }
@@ -456,11 +457,11 @@ cudaStream_t NVMatrix::getDefaultStream(int deviceID) {
 }
 
 void NVMatrix::syncDevice() {
-    checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(hipDeviceSynchronize());
 }
 
-void NVMatrix::syncStream(cudaStream_t stream) {
-    checkCudaErrors(cudaStreamSynchronize(stream));
+void NVMatrix::syncStream(hipStream_t stream) {
+    checkCudaErrors(hipStreamSynchronize(stream));
 }
 
 void NVMatrix::syncStream() {
@@ -506,7 +507,7 @@ int NVMatrix::getDataDeviceID() const {
 
 int NVMatrix::getDeviceID() {
     int d;
-    checkCudaErrors(cudaGetDevice(&d));
+    checkCudaErrors(hipGetDevice(&d));
 //    if (d == 0) {
 //        raise(SIGABRT);
 //    }
@@ -519,7 +520,7 @@ void NVMatrix::setDeviceID(int d) {
 //    if (d == 0) {
 //        raise(SIGABRT);
 //    }
-    checkCudaErrors(cudaSetDevice(d));
+    checkCudaErrors(hipSetDevice(d));
 }
 
 bool NVMatrix::canAccessPeer(int srcDevice, int tgtDevice) {
@@ -527,7 +528,7 @@ bool NVMatrix::canAccessPeer(int srcDevice, int tgtDevice) {
         return true;
     }
     int canAccess;
-    checkCudaErrors(cudaDeviceCanAccessPeer(&canAccess, srcDevice, tgtDevice));
+    checkCudaErrors(hipDeviceCanAccessPeer(&canAccess, srcDevice, tgtDevice));
     return canAccess;
 }
 
@@ -550,7 +551,7 @@ void NVMatrix::destroyRandom() {
     int d = getDeviceID();
     pthread_mutex_lock(_rndMutex);
     assert(isRndInitialized(true));
-//    checkCudaErrors(cudaFree(_rndDevStates[d]));
+//    checkCudaErrors(hipFree(_rndDevStates[d]));
     DEVICE_MEMORY_MANAGER::getInstance(d).free(_rndDevStates[d]);
     _rndDevStates.erase(d);
     _rndDevThreads.erase(d);
@@ -791,14 +792,14 @@ void NVMatrix::copy(NVMatrix &dest, int srcStartRow, int srcEndRow,
 
 void NVMatrix::copy(NVMatrix &dest, int srcStartRow, int srcEndRow,
                     int srcStartCol, int srcEndCol,
-                    int destStartRow, int destStartCol, cudaStream_t stream) const {
+                    int destStartRow, int destStartCol, hipStream_t stream) const {
     srcEndRow = srcEndRow < 0 ? _numRows : srcEndRow;
     srcEndCol = srcEndCol < 0 ? _numCols : srcEndCol;
     NVMatrix* srcSlice = &slice(srcStartRow, srcEndRow, srcStartCol, srcEndCol);
     NVMatrix* destSlice = &dest.slice(destStartRow, destStartRow + srcEndRow - srcStartRow, destStartCol, destStartCol + srcEndCol - srcStartCol);
     if (srcSlice->isContiguous() && destSlice->isContiguous() && srcSlice->isSameDims(*destSlice) && srcSlice->isTrans() == destSlice->isTrans()) {
         // The commonest case.
-        checkCudaErrors(cudaMemcpyAsync(destSlice->getDevData(), srcSlice->getDevData(), srcSlice->getNumDataBytes(), cudaMemcpyDefault, stream));
+        checkCudaErrors(hipMemcpyAsync(destSlice->getDevData(), srcSlice->getDevData(), srcSlice->getNumDataBytes(), hipMemcpyDefault, stream));
     } else {
         srcSlice->apply(NVMatrixOps::Identity(), *destSlice, stream);
     }
@@ -853,7 +854,7 @@ void NVMatrix::flipTrans(NVMatrix& target) {
     flipTrans(target, getDefaultStream());
 }
 
-void NVMatrix::flipTrans(NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::flipTrans(NVMatrix& target, hipStream_t stream) {
     assert(&target != this);
     target.resize(_numRows, _numCols);
     target.setTrans(!isTrans());
@@ -874,7 +875,7 @@ void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target) {
     add(b, scaleA, scaleB, target, NVMatrix::getDefaultStream());
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target, hipStream_t stream) {
     if (scaleA == 0) {
         b.scale(scaleB, target, stream);
     } else if (scaleB == 0) {
@@ -936,15 +937,15 @@ void NVMatrix::tile(int timesY, int timesX, NVMatrix& target) {
     tile(timesY, timesX, target, getDefaultStream());
 }
 
-void NVMatrix::tile(int timesY, int timesX, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::tile(int timesY, int timesX, NVMatrix& target, hipStream_t stream) {
     assert(isContiguous() && target.isContiguous());
     assert(timesX > 0 && timesY > 0);
     target.resize(_numRows*timesY, _numCols*timesX);
     target.setTrans(_isTrans);
     if(!isTrans()) {
-        kTile<<<NUM_TILE_BLOCKS,NUM_TILE_THREADS_PER_BLOCK, 0, stream>>>(getDevData(), target.getDevData(), _numCols, _numRows, target._numCols, target._numRows);
+        hipLaunchKernel(HIP_KERNEL_NAME(kTile), dim3(NUM_TILE_BLOCKS), dim3(NUM_TILE_THREADS_PER_BLOCK), 0, stream, getDevData(), target.getDevData(), _numCols, _numRows, target._numCols, target._numRows);
     } else {
-        kTile<<<NUM_TILE_BLOCKS,NUM_TILE_THREADS_PER_BLOCK, 0, stream>>>(getDevData(), target.getDevData(), _numRows, _numCols, target._numRows, target._numCols);
+        hipLaunchKernel(HIP_KERNEL_NAME(kTile), dim3(NUM_TILE_BLOCKS), dim3(NUM_TILE_THREADS_PER_BLOCK), 0, stream, getDevData(), target.getDevData(), _numRows, _numCols, target._numRows, target._numCols);
     }
     getLastCudaError("Kernel execution failed");
 }
@@ -953,7 +954,7 @@ void NVMatrix::addVector(NVMatrix& vec, float scaleVec, NVMatrix& target) {
     addVector(vec, scaleVec, target, getDefaultStream());
 }
 
-void NVMatrix::addVector(NVMatrix& vec, float scaleVec, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::addVector(NVMatrix& vec, float scaleVec, NVMatrix& target, hipStream_t stream) {
     applyBinaryV(NVMatrixBinaryOps::ScaledAdd(scaleVec), vec, target, stream);
 }
 
@@ -981,11 +982,11 @@ void NVMatrix::eltwiseMultByVector(NVMatrix& vec, NVMatrix& target) {
     eltwiseMultByVector(vec, target, getDefaultStream());
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::eltwiseMultByVector(NVMatrix& vec, NVMatrix& target, hipStream_t stream) {
     applyBinaryV(NVMatrixBinaryOps::Multiply(), vec, target, stream);
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec, cudaStream_t stream) {
+void NVMatrix::eltwiseMultByVector(NVMatrix& vec, hipStream_t stream) {
     eltwiseMultByVector(vec, *this, stream);
 }
 
@@ -1002,7 +1003,7 @@ void NVMatrix::eltwiseDivideByVector(NVMatrix& vec, NVMatrix& target) {
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, cudaStream_t stream) {
+void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
     _aggregate(axis, target, agg, uop, bop, stream, NULL);
 }
 
@@ -1011,7 +1012,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
  * TODO: this function is _really_ bad for very long aggregations of few columns.
  */
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, cudaStream_t stream, NVMatrix* tmp) {
+void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, NVMatrix* tmp) {
     assert(axis == 0 || axis == 1);
     assert(isContiguous()  && target.isContiguous());
     assert(&target != this);
@@ -1028,7 +1029,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
             int numBlocks = DIVUP(width, NUM_SUM_COLS_THREADS_PER_BLOCK);
             assert(numBlocks * NUM_SUM_COLS_THREADS_PER_BLOCK >= width);
             assert(numBlocks < NUM_BLOCKS_MAX);
-            kDumbAggCols<Agg, UnaryOp, BinaryOp><<<numBlocks,NUM_SUM_COLS_THREADS_PER_BLOCK, 0, stream>>>(getTextureObject(), target.getDevData(), width, height, agg, uop, bop);
+            hipLaunchKernel(HIP_KERNEL_NAME(kDumbAggCols<Agg, UnaryOp, BinaryOp>), dim3(numBlocks), dim3(NUM_SUM_COLS_THREADS_PER_BLOCK), 0, stream, getTextureObject(), target.getDevData(), width, height, agg, uop, bop);
             getLastCudaError("kDumbAggCols: Kernel execution failed");
         } else { // Specialize the case when we have very long columns and few of them
             const int sumLength = 128;
@@ -1043,11 +1044,11 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
 
             dim3 blocks(numBlocksX, numBlocksY);
             dim3 threads(NUM_SUM_COLS_THREADS_PER_BLOCK);
-            kAggCols<Agg, UnaryOp><<<blocks,threads, 0, stream>>>(getTextureObject(), tmp->getDevData(), width, height, sumLength, agg, uop);
+            hipLaunchKernel(HIP_KERNEL_NAME(kAggCols<Agg, UnaryOp>), dim3(blocks), dim3(threads), 0, stream, getTextureObject(), tmp->getDevData(), width, height, sumLength, agg, uop);
             getLastCudaError("kAggCols: Kernel execution failed");
 
             int numBlocks = DIVUP(width, NUM_SUM_COLS_THREADS_PER_BLOCK);
-            kDumbAggCols<Agg, NVMatrixOps::Identity, BinaryOp><<<numBlocks,NUM_SUM_COLS_THREADS_PER_BLOCK, 0, stream>>>(tmp->getTextureObject(), target.getDevData(), width, numBlocksY, agg, NVMatrixOps::Identity(), bop);
+            hipLaunchKernel(HIP_KERNEL_NAME(kDumbAggCols<Agg, NVMatrixOps::Identity, BinaryOp>), dim3(numBlocks), dim3(NUM_SUM_COLS_THREADS_PER_BLOCK), 0, stream, tmp->getTextureObject(), target.getDevData(), width, numBlocksY, agg, NVMatrixOps::Identity(), bop);
             getLastCudaError("kDumbAggCols: Kernel execution failed");
             if (deltmp) {
                 delete tmp;
@@ -1068,29 +1069,29 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
                 dim3 grid(numBlocksX, numBlocksY), threads(numThreadsX, numThreadsY);
                 if(width <= 16) {
                     if(width <= 4) {
-                        kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 4><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 4>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                     } else if(width <= 8) {
-                        kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 8><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 8>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                     } else if(width <= 12) {
-                        kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 12><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 12>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                     } else {
-                        kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 16><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 1, 16>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                     }
                 } else if(width <= 32) {
-                    kAggShortRows<Agg, UnaryOp, BinaryOp, 2, AGG_SHORT_ROWS_THREADS_X><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 2, AGG_SHORT_ROWS_THREADS_X>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                 } else if(width <= 48){
-                    kAggShortRows<Agg, UnaryOp, BinaryOp, 3, AGG_SHORT_ROWS_THREADS_X><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 3, AGG_SHORT_ROWS_THREADS_X>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                 } else if(width <= 64){
-                    kAggShortRows<Agg, UnaryOp, BinaryOp, 4, AGG_SHORT_ROWS_THREADS_X><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows<Agg, UnaryOp, BinaryOp, 4, AGG_SHORT_ROWS_THREADS_X>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                 } else {
-                    kAggShortRows2<Agg, UnaryOp, BinaryOp><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),width, height, agg, uop, bop);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kAggShortRows2<Agg, UnaryOp, BinaryOp>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),width, height, agg, uop, bop);
                 }
             } else {
                 if (width >= 512) {
                     // NOTE: this is the only case which I bothered to try to optimize for Kepler
                     dim3 threads(AWR_NUM_THREADS);
                     dim3 blocks(1, height);
-                    kAggRows_wholerow_nosync<<<blocks, threads, 0, stream>>>(getDevData(), target.getDevData(), width, height, agg, uop, bop);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kAggRows_wholerow_nosync), dim3(blocks), dim3(threads), 0, stream, getDevData(), target.getDevData(), width, height, agg, uop, bop);
                 } else {
 
                     int numThreadsX = width <= 64 ? 32 : (width <= 128 ? 64 : (width <= 256 ? 128 : (width <= 512 ? 256 : 512)));
@@ -1103,19 +1104,19 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
                     assert(numBlocksY <= NUM_BLOCKS_MAX);
 
                     if(width <= 64) {
-                        kAggRows<Agg, UnaryOp, BinaryOp, 32><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggRows<Agg, UnaryOp, BinaryOp, 32>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),
                                                    width, height, target.getLeadingDim(), agg, uop, bop);
                     } else if(width <= 128) {
-                        kAggRows<Agg, UnaryOp, BinaryOp, 64><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggRows<Agg, UnaryOp, BinaryOp, 64>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),
                                                    width, height, target.getLeadingDim(), agg, uop, bop);
                     } else if(width <= 256) {
-                        kAggRows<Agg, UnaryOp, BinaryOp, 128><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggRows<Agg, UnaryOp, BinaryOp, 128>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),
                                                    width, height, target.getLeadingDim(), agg, uop, bop);
                     } else if(width <= 512) {
-                        kAggRows<Agg, UnaryOp, BinaryOp, 256><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggRows<Agg, UnaryOp, BinaryOp, 256>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),
                                                    width, height, target.getLeadingDim(), agg, uop, bop);
                     } else {
-                        kAggRows<Agg, UnaryOp, BinaryOp, 512><<<grid, threads, 0, stream>>>(getDevData(), target.getDevData(),
+                        hipLaunchKernel(HIP_KERNEL_NAME(kAggRows<Agg, UnaryOp, BinaryOp, 512>), dim3(grid), dim3(threads), 0, stream, getDevData(), target.getDevData(),
                                                    width, height, target.getLeadingDim(), agg, uop, bop);
                     }
 
@@ -1140,7 +1141,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop) {
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, cudaStream_t stream) {
+void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, stream);
 }
 
@@ -1152,7 +1153,7 @@ NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop) {
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, cudaStream_t stream) {
+NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
     NVMatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop, stream);
     return sumVec;
@@ -1164,7 +1165,7 @@ NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop) {
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, cudaStream_t stream) {
+NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop, stream);
 }
 
@@ -1181,7 +1182,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, NVM
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, cudaStream_t stream, NVMatrix& tmp) {
+void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, stream, &tmp);
 }
 
@@ -1193,7 +1194,7 @@ NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, NVM
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, cudaStream_t stream, NVMatrix& tmp) {
+NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
     NVMatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop, stream, tmp);
     return sumVec;
@@ -1205,7 +1206,7 @@ NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, NVMatrix& tmp) {
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, cudaStream_t stream, NVMatrix& tmp) {
+NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop, stream, tmp);
 }
 
@@ -1280,7 +1281,7 @@ void NVMatrix::scale(float _scale) {
     scale(_scale, *this);
 }
 
-void NVMatrix::scale(float _scale, cudaStream_t stream) {
+void NVMatrix::scale(float _scale, hipStream_t stream) {
     scale(_scale, *this, stream);
 }
 
@@ -1288,7 +1289,7 @@ void NVMatrix::scale(float _scale, NVMatrix& target) {
     scale(_scale, target, NVMatrix::getDefaultStream());
 }
 
-void NVMatrix::scale(float _scale, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::scale(float _scale, NVMatrix& target, hipStream_t stream) {
     if (_scale != 1 || &target != this) { // optimize away scale by 1
         if (_scale == 1) {
             copy(target, stream);
@@ -1319,7 +1320,7 @@ void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum) {
     addSum(a, axis, scaleThis, scaleSum, getDefaultStream());
 }
 
-void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum, cudaStream_t stream) {
+void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum, hipStream_t stream) {
     if (scaleThis != 0) {
         a._aggregate(axis, *this, NVMatrixAggs::Sum(), NVMatrixBinaryOps::WeightedAdd(scaleThis, scaleSum), stream);
     } else {
@@ -1331,7 +1332,7 @@ void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax) {
     addMax(a, axis, scaleThis, scaleMax, getDefaultStream());
 }
 
-void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax, cudaStream_t stream) {
+void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax, hipStream_t stream) {
     if (scaleThis != 0) {
         a._aggregate(axis, *this, NVMatrixAggs::Max(), NVMatrixBinaryOps::WeightedAdd(scaleThis, scaleMax), stream);
     } else {
@@ -1343,7 +1344,7 @@ void NVMatrix::sum(int axis, NVMatrix& target) {
     sum(axis, target, getDefaultStream());
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::sum(int axis, NVMatrix& target, hipStream_t stream) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixBinaryOps::Second(), stream);
 }
 
@@ -1351,7 +1352,7 @@ void NVMatrix::sum(int axis, NVMatrix& target, NVMatrix& tmp) {
     sum(axis, target, getDefaultStream(), tmp);
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target, cudaStream_t stream, NVMatrix& tmp) {
+void NVMatrix::sum(int axis, NVMatrix& target, hipStream_t stream, NVMatrix& tmp) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixBinaryOps::Second(), stream, tmp);
 }
 
@@ -1359,7 +1360,7 @@ void NVMatrix::sumOfSquares(int axis, NVMatrix& target) {
     sumOfSquares(axis, target, getDefaultStream());
 }
 
-void NVMatrix::sumOfSquares(int axis, NVMatrix& target, cudaStream_t stream) {
+void NVMatrix::sumOfSquares(int axis, NVMatrix& target, hipStream_t stream) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixOps::Square(), NVMatrixBinaryOps::Second(), stream);
 }
 
@@ -1422,27 +1423,27 @@ float NVMatrix::_totalAgg(Agg agg) {
 }
 
 template<class Agg>
-float NVMatrix::_totalAgg(Agg agg, cudaStream_t stream) {
+float NVMatrix::_totalAgg(Agg agg, hipStream_t stream) {
     NVMatrix tmp;
     return _totalAgg(agg, tmp, stream);
 }
 
 template<class Agg>
-float NVMatrix::_totalAgg(Agg agg, NVMatrix& tmpbuf, cudaStream_t stream) {
+float NVMatrix::_totalAgg(Agg agg, NVMatrix& tmpbuf, hipStream_t stream) {
     assert(isContiguous());
     dim3 blocks, threads;
     // Sum most of it on GPU
 
     _sum_setParams(getNumElements(), &blocks, &threads);
     tmpbuf.resize(1, blocks.x);
-    kTotalAgg<<<blocks, threads, 0, stream>>>(getDevData(), tmpbuf.getDevData(), getNumElements(), agg);
+    hipLaunchKernel(HIP_KERNEL_NAME(kTotalAgg), dim3(blocks), dim3(threads), 0, stream, getDevData(), tmpbuf.getDevData(), getNumElements(), agg);
     getLastCudaError("kTotalAgg: Kernel execution failed");
     // Don't need to sync because we copyToHost in the same stream, so it's serialized
 //    NVMatrix::syncStream(stream);
     return tmpbuf.cpuAgg(agg, stream);
 }
 template<class Agg>
-float NVMatrix::cpuAgg(Agg agg, cudaStream_t stream) {
+float NVMatrix::cpuAgg(Agg agg, hipStream_t stream) {
     Matrix bufCPU(getNumRows(), getNumCols());
     copyToHost(bufCPU, false, stream);
     if (getNumElements() > 1) { // Sum remainder on CPU
@@ -1467,7 +1468,7 @@ float NVMatrix::dotProduct(NVMatrix& b) {
     return dotProduct(b, getDefaultStream());
 }
 
-float NVMatrix::dotProduct(NVMatrix& b, cudaStream_t stream) {
+float NVMatrix::dotProduct(NVMatrix& b, hipStream_t stream) {
     NVMatrix tmp;
     return dotProduct(b, tmp, stream);
 }
@@ -1475,7 +1476,7 @@ float NVMatrix::dotProduct(NVMatrix& b, cudaStream_t stream) {
 /*
  * Fast dot product only for matrices with same transposedness.
  */
-float NVMatrix::dotProduct(NVMatrix& b, NVMatrix& tmp, cudaStream_t stream) {
+float NVMatrix::dotProduct(NVMatrix& b, NVMatrix& tmp, hipStream_t stream) {
     assert(isContiguous() && b.isContiguous());
     assert(isSameDims(b));
     assert(isTrans() == b.isTrans()); // see?
@@ -1483,9 +1484,9 @@ float NVMatrix::dotProduct(NVMatrix& b, NVMatrix& tmp, cudaStream_t stream) {
     _sum_setParams(getNumElements(), &blocks, &threads);
 //    NVMatrix target(1, blocks.x);
     tmp.resize(1, blocks.x);
-    kDotProduct_r<<<blocks, threads, 0, stream>>>(getDevData(), b.getDevData(), tmp.getDevData(), getNumElements());
+    hipLaunchKernel(HIP_KERNEL_NAME(kDotProduct_r), dim3(blocks), dim3(threads), 0, stream, getDevData(), b.getDevData(), tmp.getDevData(), getNumElements());
     getLastCudaError("kDotProduct_r: Kernel execution failed");
-//    cudaThreadSynchronize();
+//    hipDeviceSynchronize();
 //    syncStream(stream);
 //    return tmp._totalAgg(NVMatrixAggs::Sum(), stream);
     return tmp.cpuAgg(NVMatrixAggs::Sum(), stream);
@@ -1500,7 +1501,7 @@ float NVMatrix::norm() {
 }
 
 void NVMatrix::print(int startRow, int rows, int startCol, int cols) const {
-//    cudaThreadSynchronize();
+//    hipDeviceSynchronize();
     syncDevice();
     Matrix hm = Matrix(_numRows, _numCols);
     copyToHost(hm);
@@ -1542,7 +1543,7 @@ cudaTextureObject_t NVMatrix::getTextureObject() {
        resDesc.resType = cudaResourceTypeLinear;
        resDesc.res.linear.devPtr = getDevData();
        resDesc.res.linear.sizeInBytes = getNumDataBytes();
-       resDesc.res.linear.desc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+       resDesc.res.linear.desc = hipCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
        struct cudaTextureDesc texDesc;
        memset(&texDesc, 0, sizeof(texDesc));
        checkCudaErrors(cudaCreateTextureObject(&_texObj, &resDesc, &texDesc, NULL));
@@ -1578,7 +1579,7 @@ NVMatrix& NVMatrix::construct(MemorySegment* mem, int numRows, int numCols, int 
 
 std::pair<size_t, size_t> NVMatrix::getCudaMemorySize() {
     size_t memFree, memTotal;
-    checkCudaErrors(cudaMemGetInfo(&memFree, &memTotal));
+    checkCudaErrors(hipMemGetInfo(&memFree, &memTotal));
     return std::pair<size_t,size_t>(memFree, memTotal);
 }
 
@@ -1659,7 +1660,7 @@ NVMatrix& HostNVMatrix::construct(MemorySegment* mem, int numRows, int numCols, 
     return *new HostNVMatrix(mem, numRows, numCols, stride, isTrans);
 }
 
-void HostNVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, cudaStream_t stream) {
+void HostNVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) {
     if (resizeTarget) {
         resize(hostMatrix);
     } else {
@@ -1669,7 +1670,7 @@ void HostNVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, cud
     if (getNumElements() > 0) {
         checkCudaErrors(cudaMemcpy2D(getDevData(), _stride * sizeof(float), hostMatrix.getData(),
                                      hostMatrix.getLeadingDim() * sizeof(float), getLeadingDim() * sizeof(float),
-                                     getFollowingDim(), cudaMemcpyHostToHost));
+                                     getFollowingDim(), hipMemcpyHostToHost));
 //        syncStream(stream);
     }
 }
@@ -1682,7 +1683,7 @@ void HostNVMatrix::copyFromHost(const Matrix& hostMatrix) {
     copyFromHost(hostMatrix, false, 0);
 }
 
-void HostNVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, cudaStream_t stream) const {
+void HostNVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) const {
     if (resizeTarget) {
         hostMatrix.resize(getNumRows(), getNumCols());
     } else {
@@ -1692,7 +1693,7 @@ void HostNVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, cudaStream_
     if (getNumElements() > 0) {
         checkCudaErrors(cudaMemcpy2D(hostMatrix.getData(), hostMatrix.getLeadingDim() * sizeof(float),
                                      getDevData(), _stride * sizeof(float), getLeadingDim() * sizeof(float),
-                                     getFollowingDim(), cudaMemcpyHostToHost));
+                                     getFollowingDim(), hipMemcpyHostToHost));
 //        syncStream(stream);
     }
 }
@@ -1715,7 +1716,7 @@ void HostNVMatrix::dealloc() {
 //    FastHostMemoryManager::getInstance().free(_memSegment);
     HOST_MEMORY_MANAGER::getInstance().free(_memSegment);
     _memSegment = NULL;
-//    checkCudaErrors(cudaFreeHost(_devData));
+//    checkCudaErrors(hipFreeHost(_devData));
 }
 
 cudaTextureObject_t HostNVMatrix::getTextureObject() {

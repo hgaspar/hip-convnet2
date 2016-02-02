@@ -152,16 +152,16 @@ protected:
     virtual void allocateInitialSegment() {
         assert(_deviceID >= 0);
         assert(FIRST_BUCKET_SIZE % sizeof(DataType) == 0);
-        checkCudaErrors(cudaSetDevice(_deviceID));
+        checkCudaErrors(hipSetDevice(_deviceID));
         size_t memFree, memTotal;
-        checkCudaErrors(cudaMemGetInfo(&memFree, &memTotal));
+        checkCudaErrors(hipMemGetInfo(&memFree, &memTotal));
         _size = sizeof(DataType) * (size_t(round(double(memFree) * GPU_ALLOC_FRACTION)) / sizeof(DataType));
         printf("FastMemoryManager[%d] allocating %lu-byte initial segment\n", _deviceID, _size);
-        checkCudaErrors(cudaMalloc(&_data, _size));
+        checkCudaErrors(hipMalloc(&_data, _size));
     }
 
     virtual void freeInitialSegment() {
-        checkCudaErrors(cudaFree(_data));
+        checkCudaErrors(hipFree(_data));
     }
 
 public:
@@ -233,10 +233,10 @@ public:
         // use it in a different stream.
         if (SYNC_ON_FREE) {
             int d;
-            checkCudaErrors(cudaGetDevice(&d));
-            checkCudaErrors(cudaSetDevice(mem->getDeviceID()));
-            checkCudaErrors(cudaDeviceSynchronize());
-            checkCudaErrors(cudaSetDevice(d));
+            checkCudaErrors(hipGetDevice(&d));
+            checkCudaErrors(hipSetDevice(mem->getDeviceID()));
+            checkCudaErrors(hipDeviceSynchronize());
+            checkCudaErrors(hipSetDevice(d));
         }
         _lock.acquire();
         _freeSegments[bucket].push_back(mem);
@@ -254,7 +254,7 @@ protected:
         checkCudaErrors(cudaHostAlloc(&_data, _size, cudaHostAllocPortable));
     }
     void freeInitialSegment () {
-        checkCudaErrors(cudaFreeHost(_data));
+        checkCudaErrors(hipFreeHost(_data));
     }
 public:
     FastHostMemoryManager() : FastMemoryManager(DEVICE_HOST) {
@@ -269,10 +269,10 @@ protected:
     static MemoryManager* _memoryManager;
 
     virtual void _malloc(DataType** data, size_t size) {
-        checkCudaErrors(cudaMalloc(data, size));
+        checkCudaErrors(hipMalloc(data, size));
     }
     virtual void _free(MemorySegment* mem) {
-        checkCudaErrors(cudaFree(mem->getData<DataType>()));
+        checkCudaErrors(hipFree(mem->getData<DataType>()));
     }
 public:
     static MemoryManager& getInstance(int deviceID);
@@ -302,7 +302,7 @@ class CUDAHostMemoryManager : public CUDAMemoryManager {
 protected:
     static MemoryManager* _memoryManager;
     void _free(MemorySegment* mem) {
-        checkCudaErrors(cudaFreeHost(mem->getData<DataType>()));
+        checkCudaErrors(hipFreeHost(mem->getData<DataType>()));
     }
     void _malloc(DataType** data, size_t size) {
         checkCudaErrors(cudaHostAlloc(data, size, cudaHostAllocPortable));
