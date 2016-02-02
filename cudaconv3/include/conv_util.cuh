@@ -1,3 +1,4 @@
+#include "hip_runtime.h"
 /*
  * Copyright 2014 Google Inc. All rights reserved.
  *
@@ -110,13 +111,13 @@ public:
 
 /*
  * Block size B_YxB_X
- * blockIdx.x determines output.x, image idx in batches of B_X*imgsPerThread
- * blockIdx.y determines output.y, filter idx in batches of B_Y*filtersPerThread
+ * hipBlockIdx_x determines output.x, image idx in batches of B_X*imgsPerThread
+ * hipBlockIdx_y determines output.y, filter idx in batches of B_Y*filtersPerThread
  *
  * So each block does one output for some number of images/filters.
  *
- * threadIdx.x determines img idx
- * threadIdx.y determines filter idx
+ * hipThreadIdx_x determines img idx
+ * hipThreadIdx_y determines filter idx
  *
  * imgs:        (numFilters, imgPixels, numImages)
  * target:      (numFilters, numOutputs, numImages)
@@ -130,11 +131,11 @@ __global__ void kLocalPool(float* imgs, float* target, const int imgSize, const 
                            const int outputsX, Agg agg) {
     const int numImgBlocks = DIVUP(numImages,B_X*imgsPerThread);
     const int numFilterBlocks = DIVUP(numFilters, B_Y*filtersPerThread);
-    const int outputIdxX = blockIdx.x / numImgBlocks;
-    const int outputIdxY = blockIdx.y / numFilterBlocks;
-    const int blockImgIdx = (blockIdx.x % numImgBlocks) * B_X * imgsPerThread;
-    const int blockFilterIdx = (blockIdx.y % numFilterBlocks) * B_Y * filtersPerThread;
-    const int myFilterIdx = (blockFilterIdx + threadIdx.y*filtersPerThread);
+    const int outputIdxX = hipBlockIdx_x / numImgBlocks;
+    const int outputIdxY = hipBlockIdx_y / numFilterBlocks;
+    const int blockImgIdx = (hipBlockIdx_x % numImgBlocks) * B_X * imgsPerThread;
+    const int blockFilterIdx = (hipBlockIdx_y % numFilterBlocks) * B_Y * filtersPerThread;
+    const int myFilterIdx = (blockFilterIdx + hipThreadIdx_y*filtersPerThread);
     if (myFilterIdx >= numFilters) {
         return;
     }
@@ -145,7 +146,7 @@ __global__ void kLocalPool(float* imgs, float* target, const int imgSize, const 
 
     const int startImgPxX = startX + outputIdxX * strideX;
     const int startImgPxY = startX + outputIdxY * strideX;
-    const int imgIdx = blockImgIdx + threadIdx.x;
+    const int imgIdx = blockImgIdx + hipThreadIdx_x;
 
     imgs += myFilterIdx * imgPixels * numImages + imgIdx;
     target += (myFilterIdx * numOutputs + outputIdx) * numImages + imgIdx;
@@ -193,13 +194,13 @@ __global__ void kLocalPool(float* imgs, float* target, const int imgSize, const 
 
 /*
  * Block size B_YxB_X
- * blockIdx.x determines pixel.x, image idx in batches of B_X*imgsPerThread
- * blockIdx.y determines pixel.y, output idx in batches of B_Y
+ * hipBlockIdx_x determines pixel.x, image idx in batches of B_X*imgsPerThread
+ * hipBlockIdx_y determines pixel.y, output idx in batches of B_Y
  *
  * So each block does one pixel for some number of images/filters.
  *
- * threadIdx.x determines img idx
- * threadIdx.y determines output idx
+ * hipThreadIdx_x determines img idx
+ * hipThreadIdx_y determines output idx
  *
  * imgs:        (numFilters, imgPixels, numImages)
  * target:      (numOutputs, imgPixels, numImages) (out)
@@ -214,14 +215,14 @@ __global__ void kPoolCrossMap(float* imgs, float* target, const int imgSize,
     const int numImgBlocks = DIVUP(numImages, B_X*imgsPerThread);
 //    const int numOutputs = DIVUP(numFilters, stride);
     const int numOutputBlocks = DIVUP(numOutputs,B_Y);
-    const int pxIdxX = blockIdx.x / numImgBlocks;
-    const int pxIdxY = blockIdx.y / numOutputBlocks;
-    const int blockImgIdx = (blockIdx.x % numImgBlocks) * B_X * imgsPerThread;
-    const int outputIdx = (blockIdx.y % numOutputBlocks) * B_Y + threadIdx.y;
+    const int pxIdxX = hipBlockIdx_x / numImgBlocks;
+    const int pxIdxY = hipBlockIdx_y / numOutputBlocks;
+    const int blockImgIdx = (hipBlockIdx_x % numImgBlocks) * B_X * imgsPerThread;
+    const int outputIdx = (hipBlockIdx_y % numOutputBlocks) * B_Y + hipThreadIdx_y;
 //    const int filterIdx = outputIdx * stride;
 
     const int pxIdx = pxIdxY * imgSize + pxIdxX;
-    const int imgIdx = blockImgIdx + threadIdx.x;
+    const int imgIdx = blockImgIdx + hipThreadIdx_x;
 
     if (outputIdx < numOutputs) {
         imgs += (pxIdx) * numImages + imgIdx;
@@ -278,7 +279,7 @@ void convPoolCrossMap(NVMatrix& images, NVMatrix& target, const int startF, cons
     assert(startF <= 0);
     assert(startF + (numOutputs-1) * stride + poolSize >= numFilters); // All filters must be covered
 
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     target.resize(imgPixels*numOutputs, numImages);
     int imgsPerThread = numImages % 128 == 0 ? 4 : numImages % 64 == 0 ? 2 : 1;
 
@@ -287,24 +288,24 @@ void convPoolCrossMap(NVMatrix& images, NVMatrix& target, const int startF, cons
     bool checkCaseBounds = numImages % (threads.x*imgsPerThread) != 0;
     if (!checkCaseBounds) {
         if (imgsPerThread == 4) {
-            cudaFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 4, false>, cudaFuncCachePreferShared);
-            kPoolCrossMap<Pooler, 4, 32, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+            hipFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 4, false>, hipFuncCachePreferShared);
+            hipLaunchKernel(HIP_KERNEL_NAME(kPoolCrossMap<Pooler, 4, 32, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                               imgSize, numFilters, numImages, startF, poolSize, numOutputs, stride, pooler);
 
         } else if (imgsPerThread == 2) {
-            cudaFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 2, false>, cudaFuncCachePreferShared);
-            kPoolCrossMap<Pooler, 4, 32, 2, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+            hipFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 2, false>, hipFuncCachePreferShared);
+            hipLaunchKernel(HIP_KERNEL_NAME(kPoolCrossMap<Pooler, 4, 32, 2, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                               imgSize, numFilters, numImages, startF, poolSize, numOutputs, stride, pooler);
 
         } else if (imgsPerThread == 1) {
-            cudaFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 1, false>, cudaFuncCachePreferShared);
-            kPoolCrossMap<Pooler, 4, 32, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+            hipFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 1, false>, hipFuncCachePreferShared);
+            hipLaunchKernel(HIP_KERNEL_NAME(kPoolCrossMap<Pooler, 4, 32, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                               imgSize, numFilters, numImages, startF, poolSize, numOutputs, stride, pooler);
         }
     } else {
         if (imgsPerThread == 1) {
-            cudaFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 1, true>, cudaFuncCachePreferShared);
-            kPoolCrossMap<Pooler, 4, 32, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+            hipFuncSetCacheConfig(kPoolCrossMap<Pooler, 4, 32, 1, true>, hipFuncCachePreferShared);
+            hipLaunchKernel(HIP_KERNEL_NAME(kPoolCrossMap<Pooler, 4, 32, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                               imgSize, numFilters, numImages, startF, poolSize, numOutputs, stride, pooler);
         } else {
             assert(false);
@@ -315,13 +316,13 @@ void convPoolCrossMap(NVMatrix& images, NVMatrix& target, const int startF, cons
 
 /*
  * Block size 16xB_X
- * blockIdx.x determines 4x4 pixel.x region, image idx in batches of B_X*imgsPerThread
- * blockIdx.y determines 4x4 pixel.y region, filter idx in batches of filtersPerThread
+ * hipBlockIdx_x determines 4x4 pixel.x region, image idx in batches of B_X*imgsPerThread
+ * hipBlockIdx_y determines 4x4 pixel.y region, filter idx in batches of filtersPerThread
  *
  * So each block does a 4x4 region for some number of images/filters.
  *
- * threadIdx.x determines img idx
- * threadIdx.y determines pixel idx
+ * hipThreadIdx_x determines img idx
+ * hipThreadIdx_y determines pixel idx
  *
  * imgs:        (numFilters, imgPixels, numImages)
  * target:      (numFilters, numOutputs, numImages)
@@ -346,20 +347,20 @@ __global__ void kLocalPool2(float* imgs, float* target, const int imgSize, const
     __shared__ float shImgs[filtersPerThread][B_X*imgsPerThread];
     const int numImgBlocks = DIVUP(numImages,B_X*imgsPerThread);
     const int numFilterBlocks = numFilters/(filtersPerThread);
-    const int blockOutputX = 4*(blockIdx.x / numImgBlocks);
-    const int blockOutputY = 4*(blockIdx.y / numFilterBlocks);
-    const int blockImgIdx = (blockIdx.x % numImgBlocks) * B_X * imgsPerThread;
-    const int blockFilterIdx = (blockIdx.y % numFilterBlocks) * filtersPerThread;
+    const int blockOutputX = 4*(hipBlockIdx_x / numImgBlocks);
+    const int blockOutputY = 4*(hipBlockIdx_y / numFilterBlocks);
+    const int blockImgIdx = (hipBlockIdx_x % numImgBlocks) * B_X * imgsPerThread;
+    const int blockFilterIdx = (hipBlockIdx_y % numFilterBlocks) * filtersPerThread;
 
 //    const int blockOutputIdx = blockOutputY * outputsX + blockOutputX;
     const int numOutputs = outputsX * outputsX;
     const int imgPixels = imgSize * imgSize;
 
-    const int tidx = threadIdx.y * B_X + threadIdx.x;
+    const int tidx = hipThreadIdx_y * B_X + hipThreadIdx_x;
     const int loadY = tidx / 32, loadX = tidx % 32;
 
-    const int myX = threadIdx.y % 4;
-    const int myY = threadIdx.y / 4;
+    const int myX = hipThreadIdx_y % 4;
+    const int myY = hipThreadIdx_y / 4;
 
     const int myOutputIdxY = blockOutputY + myY;
     const int myOutputIdxX = blockOutputX + myX;
@@ -380,7 +381,7 @@ __global__ void kLocalPool2(float* imgs, float* target, const int imgSize, const
     const int loopEndY = MIN(imgSize, endImgPxY + 3);
     const int loopEndX = MIN(imgSize, endImgPxX + 3);
 
-    const int imgIdx = blockImgIdx + threadIdx.x;
+    const int imgIdx = blockImgIdx + hipThreadIdx_x;
 
     imgs += (blockFilterIdx + loadY) * imgPixels * numImages + blockImgIdx + loadX;
     target += (blockFilterIdx * numOutputs + myOutputIdx) * numImages + imgIdx;
@@ -419,7 +420,7 @@ __global__ void kLocalPool2(float* imgs, float* target, const int imgSize, const
                     if (!checkCaseBounds || imgIdx + i * B_X < numImages) {
                         #pragma unroll
                         for (int f = 0; f < filtersPerThread; f++) {
-                            prod[f][i] = agg(prod[f][i], shImgs[f][threadIdx.x + i * B_X]);
+                            prod[f][i] = agg(prod[f][i], shImgs[f][hipThreadIdx_x + i * B_X]);
                         }
                     }
                 }
@@ -460,7 +461,7 @@ void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
     assert(images.isContiguous());
 //    assert(numFilters % 4 == 0);
 //    assert(numImages % 128 == 0);
-    cudaStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = NVMatrix::getDefaultStream();
     int outputs = outputsX * outputsX;
     target.resize(numFilters*outputs, numImages);
 
@@ -479,84 +480,84 @@ void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
         if (imgsPerThread == 8) {
             if (filtersPerThread == 1) {
                  if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 1, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 1, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 1, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 1, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 2) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 2, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 2, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 2, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 2, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 2, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 2, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 2, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 2, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 3) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 3, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 3, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 3, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 3, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 3, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 3, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 3, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 3, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 4) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 4, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 4, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 4, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 4, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 4, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 8, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 8, 4, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 8, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             }
         } else if (imgsPerThread == 4) {
             if (filtersPerThread == 1) {
                  if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 1, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 1, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 1, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 1, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 2) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 2, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 2, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 2, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 2, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 2, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 2, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 2, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 2, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 3) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 3, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 3, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 3, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 3, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 3, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 3, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 3, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 3, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             } else if (filtersPerThread == 4) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 4, true>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 4, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 4, true>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 4, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 4, false>, cudaFuncCachePreferShared);
-                    kLocalPool2<Pooler, 8, 4, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool2<Pooler, 8, 4, 4, false>, hipFuncCachePreferShared);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool2<Pooler, 8, 4, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, outputsX, pooler);
                 }
             }
@@ -570,66 +571,66 @@ void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
         if (imgsPerThread == 4) {
             if (filtersPerThread == 1) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 1, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 4, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 1, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 4, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 1, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 4, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 1, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 4, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             } else {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 4, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 4, 4, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 4, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 4, 4, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 4, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 4, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 4, 4, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 4, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             }
         } else if (imgsPerThread == 2) {
             if (filtersPerThread == 1) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 1, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 2, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 1, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 2, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 1, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 2, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 1, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 2, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             } else {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 4, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 2, 4, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 4, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 2, 4, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 4, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 2, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 2, 4, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 2, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             }
         } else {
             if (filtersPerThread == 1) {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 1, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 1, 1, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 1, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 1, 1, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 1, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 1, 1, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 1, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 1, 1, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             } else {
                 if (checkCaseBounds) {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 4, true>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 1, 4, true><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 4, true>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 1, 4, true>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 } else {
-                    cudaFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 4, false>, cudaFuncCachePreferL1);
-                    kLocalPool<Pooler, 4, 32, 1, 4, false><<<blocks, threads, 0, stream>>>(images.getDevData(), target.getDevData(),
+                    hipFuncSetCacheConfig(kLocalPool<Pooler, 4, 32, 1, 4, false>, hipFuncCachePreferL1);
+                    hipLaunchKernel(HIP_KERNEL_NAME(kLocalPool<Pooler, 4, 32, 1, 4, false>), dim3(blocks), dim3(threads), 0, stream, images.getDevData(), target.getDevData(),
                                                                       imgSize, numFilters, numImages, subsX, startX, strideX, outputsX, pooler);
                 }
             }
