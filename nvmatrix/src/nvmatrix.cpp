@@ -41,7 +41,7 @@ map<int,int> NVMatrix::_rndDevThreads;
 pthread_mutex_t* NVMatrix::_rndMutex = makeMutex();
 pthread_mutex_t* NVMatrix::_cublasMutex = makeMutex();
 pthread_mutex_t* NVMatrix::_streamMutex = makeMutex();
-std::map<int,cublasHandle_t> NVMatrix::_cublasHandles;
+std::map<int,hipblasHandle_t> NVMatrix::_cublasHandles;
 std::map<int,hipStream_t> NVMatrix::_defaultStreams;
 
 pthread_mutex_t* NVMatrix::makeMutex() {
@@ -290,10 +290,10 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
         assert(target[0]->getNumCols() == cols);
 
         const int lda = a[0]->getStride(), ldb = b[0]->getStride(), ldc = target[0]->getStride();
-        cublasOperation_t atrans = a[0]->getTransChar(), btrans = b[0]->getTransChar();
+        hipblasOperation_t atrans = a[0]->getTransChar(), btrans = b[0]->getTransChar();
 
         CUBLAS_CALL(cublasSetStream_v2(getCublasHandle(), stream));
-        CUBLAS_CALL(cublasSgemmBatched(getCublasHandle(), atrans, btrans, rows, cols, inner, &scaleAB, aPtrsDev, lda, bPtrsDev, ldb, &scaleTarget, tgtPtrsDev, ldc, batch));
+        CUBLAS_CALL(hipblasSgemmBatched(getCublasHandle(), atrans, btrans, rows, cols, inner, &scaleAB, aPtrsDev, lda, bPtrsDev, ldb, &scaleTarget, tgtPtrsDev, ldc, batch));
     }
 }
 
@@ -407,8 +407,8 @@ void NVMatrix::initCublas() {
     int d = getDeviceID();
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(d) == 0);
-    CUBLAS_CALL(cublasCreate(&_cublasHandles[d]));
-    // It appears that cublasCreate causes a host -> device copy on stream 0,
+    CUBLAS_CALL(hipblasCreate(&_cublasHandles[d]));
+    // It appears that hipblasCreate causes a host -> device copy on stream 0,
     // so we synchronize with it because we run everything else on other
     // streams.
     syncDevice();
@@ -419,19 +419,19 @@ void NVMatrix::destroyCublas() {
     int d = getDeviceID();
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(d) > 0);
-    CUBLAS_CALL(cublasDestroy(_cublasHandles[d]));
+    CUBLAS_CALL(hipblasDestroy(_cublasHandles[d]));
     _cublasHandles.erase(d);
     pthread_mutex_unlock(_cublasMutex);
 }
 
-cublasHandle_t NVMatrix::getCublasHandle() {
+hipblasHandle_t NVMatrix::getCublasHandle() {
     return getCublasHandle(getDeviceID());
 }
 
-cublasHandle_t NVMatrix::getCublasHandle(int deviceID) {
+hipblasHandle_t NVMatrix::getCublasHandle(int deviceID) {
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(deviceID) > 0);
-    cublasHandle_t h = _cublasHandles[deviceID];
+    hipblasHandle_t h = _cublasHandles[deviceID];
     pthread_mutex_unlock(_cublasMutex);
     return h;
 }

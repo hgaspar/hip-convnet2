@@ -20,7 +20,7 @@
 
 #include <map>
 #include <vector>
-#include <cublas_v2.h>
+#include <hipblas.h>
 #include <cuda.h>
 #include <curand.h>
 #include <time.h>
@@ -42,7 +42,7 @@
                             printf("CURAND Error at %s:%d\n",__FILE__,__LINE__);\
                             exit(EXIT_FAILURE);}} while(0)
 
-#define CUBLAS_CALL(x) do { if((x) != CUBLAS_STATUS_SUCCESS) { \
+#define CUBLAS_CALL(x) do { if((x) != HIPBLAS_STATUS_SUCCESS) { \
                             printf("CUBLAS Error at %s:%d\n",__FILE__,__LINE__);\
                             exit(EXIT_FAILURE);}} while(0)
 
@@ -85,20 +85,20 @@ protected:
 
 //    static std::map<int,curandGenerator_t> rndGen;
     static std::map<int,MemorySegment*> _rndDevStates;
-    static std::map<int,cublasHandle_t> _cublasHandles;
+    static std::map<int,hipblasHandle_t> _cublasHandles;
     // Map from device id --> # of random streams initialized on that device
     static std::map<int,int> _rndDevThreads;
     static pthread_mutex_t *_rndMutex, *_cublasMutex, *_streamMutex;
     // Map from device id --> default stream
     static std::map<int,hipStream_t> _defaultStreams;
 
-    cublasOperation_t getTransChar() const {
+    hipblasOperation_t getTransChar() const {
         /*
          * not a typo! return opposite character because a
          * non-transposed nvmatrix is in row-major order while a non-transposed
          * cublas matrix is in column-major order.
          */
-        return _isTrans ? CUBLAS_OP_N : CUBLAS_OP_T;
+        return _isTrans ? HIPBLAS_OP_N : HIPBLAS_OP_T;
     }
 
     void _init(bool isTrans);
@@ -141,8 +141,8 @@ protected:
     virtual NVMatrix& construct(const NVMatrix& like) const;
     virtual NVMatrix& construct(const Matrix& like) const;
     virtual NVMatrix& construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const;
-    static cublasHandle_t getCublasHandle();
-    static cublasHandle_t getCublasHandle(int deviceID);
+    static hipblasHandle_t getCublasHandle();
+    static hipblasHandle_t getCublasHandle(int deviceID);
 public:
     NVMatrix();
     NVMatrix(bool isTrans);
