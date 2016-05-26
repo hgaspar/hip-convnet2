@@ -17,13 +17,13 @@
 #include <helper_cuda.h>
 #include <iostream>
 #include <set>
-#include "../../cudaconv3/include/cudaconv2.cuh"
+#include "../../cudaconv3/include/cudaconv2.hpp"
 #include "../../util/include/matrix.h"
-#include "../include/layer_kernels.cuh"
-#include "../include/layer.cuh"
-#include "../include/data.cuh"
-#include "../include/util.cuh"
-#include "../include/weights.cuh"
+#include "../include/layer_kernels.hpp"
+#include "../include/layer.hpp"
+#include "../include/data.hpp"
+#include "../include/util.hpp"
+#include "../include/weights.hpp"
 
 using namespace std;
 

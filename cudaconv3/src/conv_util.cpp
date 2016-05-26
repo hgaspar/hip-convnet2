@@ -17,9 +17,9 @@
 
 #include <iostream>
 #include <assert.h>
-#include "../../nvmatrix/include/nvmatrix_kernels.cuh"
-#include "../../nvmatrix/include/nvmatrix.cuh"
-#include "../include/conv_util.cuh"
+#include "../../hipmatrix/include/hipmatrix_kernels.hpp"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+#include "../include/conv_util.hpp"
 
 using namespace std;
 
@@ -2515,7 +2515,7 @@ void convResponseNormUndo(NVMatrix& outGrads, NVMatrix& denoms, NVMatrix& inputs
     // Now the main routine
     if (sizeX >= 6 && numFilters % 4 == 0) {
         // This one is faster for large regions (my tests show regions >= 6...)
-        // NOTE: this stuff is not optimized for Kepler. Only kRNormUndo is.
+        // NOTE: this stuff is not optimized for GPU. Only kRNormUndo is.
         int imgsPerThread = numImages % 128 == 0 ? 8 : numImages % 64 == 0 ? 4 : 2;
         int filtersPerThread = 4;
         int bx = 16;

@@ -22,14 +22,14 @@
 #include <iostream>
 #include <helper_cuda.h>
 #include <assert.h>
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #include "../../util/include/matrix.h"
-#include "util.cuh"
-#include "lr.cuh"
-#include "layer.cuh"
-#include "copypipeline.cuh"
-#include "reducepipeline.cuh"
-#include "streambroadcast.cuh"
+#include "util.hpp"
+#include "lr.hpp"
+#include "layer.hpp"
+#include "copypipeline.hpp"
+#include "reducepipeline.hpp"
+#include "streambroadcast.hpp"
 
 class Layer;
 class Weights;

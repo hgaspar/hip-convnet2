@@ -27,7 +27,7 @@
 #include <sstream>
 #include <string>
 #include <Python.h>
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #include "../../util/include/matrix.h"
 
 

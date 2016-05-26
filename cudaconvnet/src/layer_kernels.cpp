@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <vector>
 #include <cmath>
-#include "../include/layer_kernels.cuh"
+#include "../include/layer_kernels.hpp"
 
 using namespace std;
 

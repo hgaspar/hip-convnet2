@@ -19,7 +19,7 @@
 
 #include <vector>
 #include <algorithm>
-#include "util.cuh"
+#include "util.hpp"
 
 class CPUData {
 protected:

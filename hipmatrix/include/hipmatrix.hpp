@@ -28,9 +28,9 @@
 
 #include <helper_cuda.h>
 #include "../../util/include/matrix.h"
-#include "nvmatrix_kernels.cuh"
-#include "nvmatrix_operators.cuh"
-#include "memory.cuh"
+#include "hipmatrix_kernels.hpp"
+#include "hipmatrix_operators.hpp"
+#include "memory.hpp"
 
 #ifdef WARNINGS
 #define WARN(msg) printf("WARN: File %s, line %d: %s\n", __FILE__, __LINE__, msg);
@@ -95,7 +95,7 @@ protected:
     hipblasOperation_t getTransChar() const {
         /*
          * not a typo! return opposite character because a
-         * non-transposed nvmatrix is in row-major order while a non-transposed
+         * non-transposed hipmatrix is in row-major order while a non-transposed
          * cublas matrix is in column-major order.
          */
         return _isTrans ? HIPBLAS_OP_N : HIPBLAS_OP_T;

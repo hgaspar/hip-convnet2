@@ -26,12 +26,12 @@
 
 #include "../../util/include/matrix.h"
 #include "../../util/include/queue.h"
-#include "../include/worker.cuh"
-#include "../include/util.cuh"
-#include "../include/cost.cuh"
+#include "../include/worker.hpp"
+#include "../include/util.hpp"
+#include "../include/cost.hpp"
 
-#include "../include/pyconvnet.cuh"
-#include "../include/convnet.cuh"
+#include "../include/pyconvnet.hpp"
+#include "../include/convnet.hpp"
 
 #include "../include/jpeg.h"
 

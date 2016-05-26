@@ -27,15 +27,15 @@
 #include "../../util/include/thread.h"
 #include <math.h>
 #include "../../util/include/sync.h"
-#include "messages.cuh"
-#include "streambroadcast.cuh"
+#include "messages.hpp"
+#include "streambroadcast.hpp"
 
-#include "layer.cuh"
-#include "data.cuh"
-#include "worker.cuh"
-#include "weights.cuh"
-#include "pipedispenser.cuh"
-#include "timer.cuh"
+#include "layer.hpp"
+#include "data.hpp"
+#include "worker.hpp"
+#include "weights.hpp"
+#include "pipedispenser.hpp"
+#include "timer.hpp"
 
 class Worker;
 class WorkResult;

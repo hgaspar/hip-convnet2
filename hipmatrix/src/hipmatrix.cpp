@@ -27,8 +27,8 @@
 #include <map>
 #include <cuda.h>
 #include <signal.h>
-#include "../include/nvmatrix.cuh"
-#include "../include/nvmatrix_operators.cuh"
+#include "../include/hipmatrix.hpp"
+#include "../include/hipmatrix_operators.hpp"
 
 using namespace std;
 

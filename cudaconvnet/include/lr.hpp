@@ -23,8 +23,8 @@
 #include <helper_cuda.h>
 #include <assert.h>
 #include <Python.h>
-#include "util.cuh"
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "util.hpp"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #include "../../util/include/matrix.h"
 
 /*

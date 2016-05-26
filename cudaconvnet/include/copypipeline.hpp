@@ -21,8 +21,8 @@
 #include "../../util/include/thread.h"
 #include "../../util/include/queue.h"
 #include <helper_cuda.h>
-#include "../../nvmatrix/include/nvmatrix.cuh"
-#include "util.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+#include "util.hpp"
 
 #define COPY_MIN_CHUNK_SIZE                 (1<<18) // 256k
 #define COPY_MAX_CHUNKS                     16

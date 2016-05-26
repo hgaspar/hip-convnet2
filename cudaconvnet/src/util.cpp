@@ -17,7 +17,7 @@
 #include <Python.h>
 #include <arrayobject.h>
 #include <helper_cuda.h>
-#include "../include/util.cuh"
+#include "../include/util.hpp"
 
 using namespace std;
 

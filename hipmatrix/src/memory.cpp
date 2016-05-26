@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "../include/memory.cuh"
+#include "../include/memory.hpp"
 
 Lock MemoryManager::_globalLock;
 std::map<int, MemoryManager*> FastMemoryManager::_memoryManagers;

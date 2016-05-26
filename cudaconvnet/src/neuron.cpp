@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "../include/neuron.cuh"
-#include "../include/util.cuh"
+#include "../include/neuron.hpp"
+#include "../include/util.hpp"
 
 using namespace std;
 

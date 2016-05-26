@@ -17,9 +17,9 @@
 #ifndef WORKER_CUH
 #define WORKER_CUH
 
-#include "convnet.cuh"
-#include "cost.cuh"
-#include "data.cuh"
+#include "convnet.hpp"
+#include "cost.hpp"
+#include "data.hpp"
 
 class ConvNet;
 class Cost;

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "../../nvmatrix/include/nvmatrix.cuh"
-#include "../include/cudaconv2.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+#include "../include/cudaconv2.hpp"
 
 
 __device__ __forceinline__ void filterActs_YxX_color_preload_ty_4_tx_32_f_16_cc_3_setImgCoords(int fPidx, int imgLoadModPosY, int imgLoadModPosX,

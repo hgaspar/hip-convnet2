@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "../include/streambroadcast.cuh"
+#include "../include/streambroadcast.hpp"
 
 using namespace std;
 

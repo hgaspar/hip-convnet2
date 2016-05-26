@@ -23,21 +23,21 @@
 #include <map>
 #include <assert.h>
 #include <helper_timer.h>
-#include "../../nvmatrix/include/nvmatrix.cuh"
-//#include "experimental/akrizhevsky/g3/mactruck-gpu-tests/gpu_util.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+//#include "experimental/akrizhevsky/g3/mactruck-gpu-tests/gpu_util.hpp"
 
-#include "weights.cuh"
-#include "convnet.cuh"
-#include "cost.cuh"
-#include "neuron.cuh"
-#include "data.cuh"
-#include "layer_kernels.cuh"
-#include "streambroadcast.cuh"
-#include "actbroadcaster.cuh"
-#include "gradreducer.cuh"
-#include "util.cuh"
-#include "timer.cuh"
-#include "memorysource.cuh"
+#include "weights.hpp"
+#include "convnet.hpp"
+#include "cost.hpp"
+#include "neuron.hpp"
+#include "data.hpp"
+#include "layer_kernels.hpp"
+#include "streambroadcast.hpp"
+#include "actbroadcaster.hpp"
+#include "gradreducer.hpp"
+#include "util.hpp"
+#include "timer.hpp"
+#include "memorysource.hpp"
 
 class Cost;
 class ConvNet;
@@ -746,7 +746,7 @@ public:
 class LogregCostLayer : public CostLayer {
 protected:
     NVMatrix _trueLabelLogProbs, _correctProbs, _topkProbs;
-    std::map<int,NVMatrix*> _probsAccum; // input replica idx -> nvmatrix
+    std::map<int,NVMatrix*> _probsAccum; // input replica idx -> hipmatrix
     NVMatrix _maxProbs;
     std::map<int,int> _numAccumed; // input replica idx -> int
     int _topk;

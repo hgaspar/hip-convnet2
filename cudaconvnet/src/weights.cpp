@@ -16,9 +16,9 @@
 
 #include <map>
 #include <algorithm>
-#include "../include/weights.cuh"
-#include "../include/lr.cuh"
-#include "../include/worker.cuh"
+#include "../include/weights.hpp"
+#include "../include/lr.hpp"
+#include "../include/worker.hpp"
 
 using namespace std;
 

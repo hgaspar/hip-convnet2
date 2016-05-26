@@ -18,7 +18,7 @@
 #define	COMMON_CUH
 
 #include <helper_cuda.h>        // helper functions CUDA error checking and initialization
-#include "../../nvmatrix/include/nvmatrix.hpp"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #include "conv_util.hpp"
 
 enum FILTER_OUTPUT_ORDER {MODULE_FILTER_IMAGE, FILTER_MODULE_IMAGE};

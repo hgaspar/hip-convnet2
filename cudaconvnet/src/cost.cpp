@@ -15,7 +15,7 @@
  */
 
 #include <iostream>
-#include "../include/cost.cuh"
+#include "../include/cost.hpp"
 
 using namespace std;
 

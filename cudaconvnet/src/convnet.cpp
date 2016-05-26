@@ -20,11 +20,11 @@
 #include <set>
 #include <map>
 
-#include "../../nvmatrix/include/nvmatrix.cuh"
-#include "../../nvmatrix/include/nvmatrix_operators.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+#include "../../hipmatrix/include/hipmatrix_operators.hpp"
 #include "../../util/include/matrix.h"
-#include "../include/convnet.cuh"
-#include "../include/util.cuh"
+#include "../include/convnet.hpp"
+#include "../include/util.hpp"
 
 using namespace std;
 

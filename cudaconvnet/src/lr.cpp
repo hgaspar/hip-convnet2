@@ -15,8 +15,8 @@
  */
 
 #include <string>
-#include "../include/lr.cuh"
-#include "../include/util.cuh"
+#include "../include/lr.hpp"
+#include "../include/util.hpp"
 
 /*
  * ==================================

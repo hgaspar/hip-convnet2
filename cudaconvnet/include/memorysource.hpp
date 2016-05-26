@@ -16,7 +16,7 @@
 
 #include <map>
 #include <set>
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 
 class MemorySource;
 

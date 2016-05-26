@@ -19,7 +19,7 @@
 
 #include <vector>
 #include <helper_cuda.h>
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 
 #define LOGREG_GRAD_THREADS_X      32
 #define LOGREG_GRAD_THREADS_Y      4

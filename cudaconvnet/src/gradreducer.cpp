@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "../include/util.cuh"
-#include "../include/gradreducer.cuh"
+#include "../include/util.hpp"
+#include "../include/gradreducer.hpp"
 
 using namespace std;
 

@@ -16,7 +16,7 @@
 
 #include <vector>
 #include <map>
-#include "../include/reducepipeline.cuh"
+#include "../include/reducepipeline.hpp"
 
 using namespace std;
 

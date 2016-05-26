@@ -19,10 +19,10 @@
 
 #include <set>
 #include <algorithm>
-#include "streambroadcast.cuh"
-#include "reducepipeline.cuh"
-#include "layer.cuh"
-#include "util.cuh"
+#include "streambroadcast.hpp"
+#include "reducepipeline.hpp"
+#include "layer.hpp"
+#include "util.hpp"
 
 class StreamBroadcast;
 class Layer;

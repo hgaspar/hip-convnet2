@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "../include/actbroadcaster.cuh"
+#include "../include/actbroadcaster.hpp"
 
 using namespace std;
 

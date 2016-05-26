@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "../include/copypipeline.cuh"
-//#include "gpu_util.cuh"
+#include "../include/copypipeline.hpp"
+//#include "gpu_util.hpp"
 
 using namespace std;
 

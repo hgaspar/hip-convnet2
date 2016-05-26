@@ -24,7 +24,7 @@
 
 #include <helper_cuda.h>
 #include "../../util/include/sync.h"
-#include "nvmatrix_kernels.cuh"
+#include "hipmatrix_kernels.hpp"
 
 #define GPU_ALLOC_FRACTION                  0.95 // Take 95% of available GPU memory
 #define HOST_ALLOC_CHUNK                    (1UL << 32)

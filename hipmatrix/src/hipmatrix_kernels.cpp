@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 #include <hip_runtime.h>
-#include "../include/nvmatrix_kernels.cuh"
+#include "../include/hipmatrix_kernels.hpp"
 
 __global__ void kTile(const float* src, float* tgt, const uint srcWidth, const uint srcHeight, const uint tgtWidth, const uint tgtHeight) {
     const int idx = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;

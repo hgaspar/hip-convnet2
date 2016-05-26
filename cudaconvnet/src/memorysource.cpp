@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "../include/memorysource.cuh"
+#include "../include/memorysource.hpp"
 
 using namespace std;
 

@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <iterator>
 #include "../../util/include/thread.h"
-#include "util.cuh"
+#include "util.hpp"
 
 /*
  * PipeDispenser interface

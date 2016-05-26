@@ -18,7 +18,7 @@
 #ifndef CONV_UTIL_CUH
 #define	CONV_UTIL_CUH
 
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #ifndef MIN
 #define MIN(a, b) ((a) > (b) ? (b) : (a))
 #endif
@@ -466,7 +466,7 @@ void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
     target.resize(numFilters*outputs, numImages);
 
     if (strideX == 1 && subsX >= 6 && outputsX > 1) {
-        // NOTE: this part has not been optimized for Kepler
+        // NOTE: this part has not been optimized for GPU
         int imgsPerThread = numImages % 128 == 0 ? 8 : 4;
         int filtersPerThread = numFilters % 4 == 0 ? 4 : numFilters % 3 == 0 ? 3 : numFilters % 2 == 0 ? 2 : 1;
         int bx = 8;

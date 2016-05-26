@@ -17,8 +17,8 @@
 #include <algorithm>
 #include <vector>
 #include "../../util/include/matrix.h"
-#include "../include/data.cuh"
-#include "../include/timer.cuh"
+#include "../include/data.hpp"
+#include "../include/timer.hpp"
 
 using namespace std;
 

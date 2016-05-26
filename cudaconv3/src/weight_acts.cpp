@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "../include/cudaconv2.cuh"
+#include "../include/cudaconv2.hpp"
 
 #define LO16(x)     ((x) & 0x0000FFFF)
 #define HI16(x)     ((x) >> 16)

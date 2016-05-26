@@ -18,8 +18,8 @@
 #define ACTBROADCASTER_CUH_H_
 
 #include <map>
-#include "streambroadcast.cuh"
-#include "copypipeline.cuh"
+#include "streambroadcast.hpp"
+#include "copypipeline.hpp"
 
 class BroadcastMessage {
 public:

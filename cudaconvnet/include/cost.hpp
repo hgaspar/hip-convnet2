@@ -21,8 +21,8 @@
 #include <map>
 #include <helper_cuda.h>
 
-#include "layer.cuh"
-#include "util.cuh"
+#include "layer.hpp"
+#include "util.hpp"
 
 class CostLayer;
 

@@ -15,9 +15,9 @@
  */
 
 #include <algorithm>
-#include "../include/util.cuh"
-#include "../include/worker.cuh"
-#include "../include/timer.cuh"
+#include "../include/util.hpp"
+#include "../include/worker.hpp"
+#include "../include/timer.hpp"
 
 using namespace std;
 

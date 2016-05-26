@@ -20,7 +20,7 @@
 #include <Python.h>
 #include <assert.h>
 #include <string>
-#include "../../nvmatrix/include/nvmatrix.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
 #include <helper_cuda.h>
 
 template <class GradientOp>

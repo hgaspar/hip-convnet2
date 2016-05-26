@@ -19,8 +19,8 @@
 
 #include <iostream>
 #include "../../util/include/queue.h"
-#include "../../nvmatrix/include/nvmatrix.cuh"
-#include "util.cuh"
+#include "../../hipmatrix/include/hipmatrix.hpp"
+#include "util.hpp"
 
 class Layer;
 
