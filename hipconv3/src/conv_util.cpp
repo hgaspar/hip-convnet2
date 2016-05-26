@@ -1,4 +1,5 @@
 #include "hip_runtime.h"
+#include "hip_runtime.h"
 /*
  * Copyright 2014 Google Inc. All rights reserved.
  *
