@@ -18,7 +18,7 @@
 #define MESSAGES_CUH_
 
 #include <string>
-#include "layer.cuh"
+#include "layer.hpp"
 
 class Layer;
 
