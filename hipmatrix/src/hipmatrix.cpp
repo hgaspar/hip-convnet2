@@ -35,16 +35,16 @@ using namespace std;
 /*
  * Device random number generator pointers.
  */
-//map<int,curandGenerator_t> NVMatrix::rndGen;
-map<int,MemorySegment*> NVMatrix::_rndDevStates;
-map<int,int> NVMatrix::_rndDevThreads;
-pthread_mutex_t* NVMatrix::_rndMutex = makeMutex();
-pthread_mutex_t* NVMatrix::_cublasMutex = makeMutex();
-pthread_mutex_t* NVMatrix::_streamMutex = makeMutex();
-std::map<int,hipblasHandle_t> NVMatrix::_cublasHandles;
-std::map<int,hipStream_t> NVMatrix::_defaultStreams;
+//map<int,curandGenerator_t> HIPmatrix::rndGen;
+map<int,MemorySegment*> HIPmatrix::_rndDevStates;
+map<int,int> HIPmatrix::_rndDevThreads;
+pthread_mutex_t* HIPmatrix::_rndMutex = makeMutex();
+pthread_mutex_t* HIPmatrix::_cublasMutex = makeMutex();
+pthread_mutex_t* HIPmatrix::_streamMutex = makeMutex();
+std::map<int,hipblasHandle_t> HIPmatrix::_cublasHandles;
+std::map<int,hipStream_t> HIPmatrix::_defaultStreams;
 
-pthread_mutex_t* NVMatrix::makeMutex() {
+pthread_mutex_t* HIPmatrix::makeMutex() {
     pthread_mutex_t* m = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(m, NULL);
     return m;
@@ -55,7 +55,7 @@ pthread_mutex_t* NVMatrix::makeMutex() {
    to call overridden functions from constructors, we shall call resize
    separately from every constructor after calling _init.
 */
-void NVMatrix::_init(bool isTrans) {
+void HIPmatrix::_init(bool isTrans) {
     _numRows = 0;
     _numCols = 0;
     _numElements = 0;
@@ -68,20 +68,20 @@ void NVMatrix::_init(bool isTrans) {
     _texObj = 0;
 }
 
-NVMatrix::NVMatrix() : _deleted(false) {
+HIPmatrix::HIPmatrix() : _deleted(false) {
     _init(false);
 }
 
-NVMatrix::NVMatrix(bool isTrans) : _deleted(false) {
+HIPmatrix::HIPmatrix(bool isTrans) : _deleted(false) {
     _init(isTrans);
 }
 
-NVMatrix::NVMatrix(int numRows, int numCols, bool isTrans) : _deleted(false) {
+HIPmatrix::HIPmatrix(int numRows, int numCols, bool isTrans) : _deleted(false) {
     _init(isTrans);
     resize(numRows, numCols);
 }
 
-NVMatrix::NVMatrix(const Matrix& like, bool copy) : _deleted(false) {
+HIPmatrix::HIPmatrix(const Matrix& like, bool copy) : _deleted(false) {
     _init(like.isTrans());
     resize(like.getNumRows(), like.getNumCols());
     if (copy) {
@@ -89,7 +89,7 @@ NVMatrix::NVMatrix(const Matrix& like, bool copy) : _deleted(false) {
     }
 }
 
-NVMatrix::NVMatrix(const NVMatrix& like, bool copy) : _deleted(false) {
+HIPmatrix::HIPmatrix(const HIPmatrix& like, bool copy) : _deleted(false) {
     _init(like.isTrans());
     resize(like.getNumRows(), like.getNumCols());
     if (copy) {
@@ -98,24 +98,24 @@ NVMatrix::NVMatrix(const NVMatrix& like, bool copy) : _deleted(false) {
 }
 
 /*
- * Initializes NVMatrix with same dimensions as given matrix but
+ * Initializes HIPmatrix with same dimensions as given matrix but
  * does not copy any data.
  */
-NVMatrix::NVMatrix(const NVMatrix& like) : _deleted(false) {
+HIPmatrix::HIPmatrix(const HIPmatrix& like) : _deleted(false) {
     _init(like.isTrans());
     resize(like.getNumRows(), like.getNumCols());
 }
 
 /*
- * Initializes NVMatrix with same dimensions as given matrix but
+ * Initializes HIPmatrix with same dimensions as given matrix but
  * does not copy any data.
  */
-NVMatrix::NVMatrix(const Matrix& like) : _deleted(false) {
+HIPmatrix::HIPmatrix(const Matrix& like) : _deleted(false) {
     _init(false);
     resize(like.getNumRows(), like.getNumCols());
 }
 
-NVMatrix::NVMatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) :
+HIPmatrix::HIPmatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) :
     _numRows(numRows),
     _numCols(numCols),
     _numElements(numRows*numCols),
@@ -127,7 +127,7 @@ NVMatrix::NVMatrix(MemorySegment* mem, int numRows, int numCols, int stride, boo
     _stride = stride < 0 ? getLeadingDim() : stride;
 }
 
-NVMatrix::~NVMatrix() {
+HIPmatrix::~HIPmatrix() {
     if (!_deleted) {
         deallocTexture();
         if(_ownsData && _numElements > 0) {
@@ -141,15 +141,15 @@ NVMatrix::~NVMatrix() {
     }
 }
 
-void NVMatrix::copyFromHost(const Matrix& hostMatrix) {
+void HIPmatrix::copyFromHost(const Matrix& hostMatrix) {
     copyFromHost(hostMatrix, false, getDefaultStream());
 }
 
-void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget) {
+void HIPmatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget) {
     copyFromHost(hostMatrix, resizeTarget, getDefaultStream());
 }
 
-void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) {
+void HIPmatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) {
     if (resizeTarget) {
         resize(hostMatrix);
     } else {
@@ -164,15 +164,15 @@ void NVMatrix::copyFromHost(const Matrix& hostMatrix, bool resizeTarget, hipStre
     }
 }
 
-void NVMatrix::copyToHost(Matrix& hostMatrix) const {
+void HIPmatrix::copyToHost(Matrix& hostMatrix) const {
     copyToHost(hostMatrix, false, getDefaultStream());
 }
 
-void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget) const {
+void HIPmatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget) const {
     copyToHost(hostMatrix, resizeTarget, getDefaultStream());
 }
 
-void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) const {
+void HIPmatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) const {
     if (resizeTarget) {
         hostMatrix.resize(_numRows, _numCols);
     } else {
@@ -187,11 +187,11 @@ void NVMatrix::copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t str
     }
 }
 
-void NVMatrix::copy(NVMatrix& dest) const {
+void HIPmatrix::copy(HIPmatrix& dest) const {
     copy(dest, getDefaultStream());
 }
 
-void NVMatrix::copy(NVMatrix& dest, hipStream_t stream) const {
+void HIPmatrix::copy(HIPmatrix& dest, hipStream_t stream) const {
     if (&dest != this) {
         if (!isSameDims(dest)) {
             dest.resize(*this);
@@ -200,17 +200,17 @@ void NVMatrix::copy(NVMatrix& dest, hipStream_t stream) const {
     }
 }
 
-NVMatrix& NVMatrix::copy() const {
-    NVMatrix& c = construct();
+HIPmatrix& HIPmatrix::copy() const {
+    HIPmatrix& c = construct();
     copy(c);
     return c;
 }
 
-void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target) {
+void HIPmatrix::rightMult(HIPmatrix &b, float scaleAB, HIPmatrix &target) {
     rightMult(b, scaleAB, target, getDefaultStream());
 }
 
-void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target, hipStream_t stream) {
+void HIPmatrix::rightMult(HIPmatrix &b, float scaleAB, HIPmatrix &target, hipStream_t stream) {
 //    if(&target != this && &target != &b) {
 //        target.resize(_numRows, b.getNumCols());
 //        target.setTrans(true);
@@ -218,15 +218,15 @@ void NVMatrix::rightMult(NVMatrix &b, float scaleAB, NVMatrix &target, hipStream
     target.addProduct(*this, b, 0, scaleAB, stream);
 }
 
-void NVMatrix::rightMult(NVMatrix &b, float scaleAB) {
+void HIPmatrix::rightMult(HIPmatrix &b, float scaleAB) {
     rightMult(b, scaleAB, *this);
 }
 
-void NVMatrix::rightMult(NVMatrix &b, NVMatrix& target) {
+void HIPmatrix::rightMult(HIPmatrix &b, HIPmatrix& target) {
     rightMult(b, 1, target);
 }
 
-void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB) {
+void HIPmatrix::addProduct(HIPmatrix& a, HIPmatrix &b, float scaleThis, float scaleAB) {
     addProduct(a, b, scaleThis, scaleAB, getDefaultStream());
 }
 
@@ -234,7 +234,7 @@ void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scale
  * This will only work if this matrix is in column-major order! In other words,
  * if isTrans() returns true.
  */
-void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB, hipStream_t stream) {
+void HIPmatrix::addProduct(HIPmatrix& a, HIPmatrix &b, float scaleThis, float scaleAB, hipStream_t stream) {
     assert(a.getNumCols() == b.getNumRows());
 
     if (scaleThis == 0) {
@@ -251,11 +251,11 @@ void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scale
                                &scaleThis, getDevData(), getStride()));
 }
 
-void NVMatrix::addProduct(NVMatrix& a, NVMatrix &b) {
+void HIPmatrix::addProduct(HIPmatrix& a, HIPmatrix &b) {
     addProduct(a, b, 1, 1);
 }
 
-void NVMatrix::assertSame(NVMatrixV& a) {
+void HIPmatrix::assertSame(NVMatrixV& a) {
     for (int i = 1; i < a.size(); ++i) {
         assert(a[i]->isSameDims(*a[0]));
         assert(a[i]->isTrans() == a[0]->isTrans());
@@ -264,16 +264,16 @@ void NVMatrix::assertSame(NVMatrixV& a) {
     }
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB,
+void HIPmatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB,
                                      const float** aPtrsDev, const float** bPtrsDev, float** tgtPtrsDev) {
     batchedMatrixMultiply(a, b, target, scaleTarget, scaleAB, getDefaultStream(), aPtrsDev, bPtrsDev, tgtPtrsDev);
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB) {
+void HIPmatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB) {
     batchedMatrixMultiply(a, b, target, scaleTarget, scaleAB, getDefaultStream());
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream,
+void HIPmatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream,
                                      const float** aPtrsDev, const float** bPtrsDev, float** tgtPtrsDev) {
     assert(a.size() == b.size());
     assert(a.size() == target.size());
@@ -297,7 +297,7 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
     }
 }
 
-void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream) {
+void HIPmatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& target, float scaleTarget, float scaleAB, hipStream_t stream) {
     assert(a.size() == b.size());
     assert(a.size() == target.size() || target.size() == 0);
 
@@ -308,7 +308,7 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
         const float* aPtrs[batch], *bPtrs[batch], *tgtPtrs[batch];
         for (int i = 0; i < batch; ++i) {
             if (target.size() <= i) {
-                target.push_back(new NVMatrix(rows, cols, true));
+                target.push_back(new HIPmatrix(rows, cols, true));
             }
             aPtrs[i] = a[i]->getDevData();
             bPtrs[i] = b[i]->getDevData();
@@ -342,12 +342,12 @@ void NVMatrix::batchedMatrixMultiply(NVMatrixV& a, NVMatrixV& b, NVMatrixV& targ
 }
 
 template <class Randomizer>
-void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd) {
+void HIPmatrix::_unaryRandomize(HIPmatrix& target, Randomizer rnd) {
     _unaryRandomize(target, rnd, getDefaultStream());
 }
 
 template <class Randomizer>
-void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd, hipStream_t stream) {
+void HIPmatrix::_unaryRandomize(HIPmatrix& target, Randomizer rnd, hipStream_t stream) {
     assert(isRndInitialized());
     assert(isContiguous() && target.isContiguous());
     if (!isSameDims(target)) {
@@ -359,12 +359,12 @@ void NVMatrix::_unaryRandomize(NVMatrix& target, Randomizer rnd, hipStream_t str
 }
 
 template <class Randomizer>
-void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd) {
+void HIPmatrix::_binaryRandomize(HIPmatrix& data2, HIPmatrix& target, Randomizer rnd) {
     _binaryRandomize(data2, target, rnd, getDefaultStream());
 }
 
 template <class Randomizer>
-void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd, hipStream_t stream) {
+void HIPmatrix::_binaryRandomize(HIPmatrix& data2, HIPmatrix& target, Randomizer rnd, hipStream_t stream) {
     assert(isRndInitialized());
     assert(isContiguous() && data2.isContiguous() && target.isContiguous());
     assert(isSameDims(data2));
@@ -377,11 +377,11 @@ void NVMatrix::_binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rn
     getLastCudaError("kBinaryRandomize: Kernel execution failed");
 }
 
-void NVMatrix::initRandom(unsigned long long seed, int numStreams) {
-    NVMatrix::initRandom(seed, numStreams, NVMatrix::getDefaultStream());
+void HIPmatrix::initRandom(unsigned long long seed, int numStreams) {
+    HIPmatrix::initRandom(seed, numStreams, HIPmatrix::getDefaultStream());
 }
 
-void NVMatrix::initRandom(unsigned long long seed, int numStreams, hipStream_t stream) {
+void HIPmatrix::initRandom(unsigned long long seed, int numStreams, hipStream_t stream) {
 //    printf("init random on device %d\n", getDeviceID());
     pthread_mutex_lock(_rndMutex);
     assert(!isRndInitialized(true));
@@ -395,15 +395,15 @@ void NVMatrix::initRandom(unsigned long long seed, int numStreams, hipStream_t s
     getLastCudaError("kSetupCurand: Kernel execution failed");
 }
 
-void NVMatrix::initRandom(unsigned long long seed) {
+void HIPmatrix::initRandom(unsigned long long seed) {
     initRandom(seed, NUM_RND_STREAMS);
 }
 
-void NVMatrix::initRandom() {
-    NVMatrix::initRandom(time(0));
+void HIPmatrix::initRandom() {
+    HIPmatrix::initRandom(time(0));
 }
 
-void NVMatrix::initCublas() {
+void HIPmatrix::initCublas() {
     int d = getDeviceID();
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(d) == 0);
@@ -415,7 +415,7 @@ void NVMatrix::initCublas() {
     pthread_mutex_unlock(_cublasMutex);
 }
 
-void NVMatrix::destroyCublas() {
+void HIPmatrix::destroyCublas() {
     int d = getDeviceID();
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(d) > 0);
@@ -424,11 +424,11 @@ void NVMatrix::destroyCublas() {
     pthread_mutex_unlock(_cublasMutex);
 }
 
-hipblasHandle_t NVMatrix::getCublasHandle() {
+hipblasHandle_t HIPmatrix::getCublasHandle() {
     return getCublasHandle(getDeviceID());
 }
 
-hipblasHandle_t NVMatrix::getCublasHandle(int deviceID) {
+hipblasHandle_t HIPmatrix::getCublasHandle(int deviceID) {
     pthread_mutex_lock(_cublasMutex);
     assert(_cublasHandles.count(deviceID) > 0);
     hipblasHandle_t h = _cublasHandles[deviceID];
@@ -436,18 +436,18 @@ hipblasHandle_t NVMatrix::getCublasHandle(int deviceID) {
     return h;
 }
 
-hipStream_t NVMatrix::getDefaultStream() {
-    return getDefaultStream(NVMatrix::getDeviceID());
+hipStream_t HIPmatrix::getDefaultStream() {
+    return getDefaultStream(HIPmatrix::getDeviceID());
 }
 
-hipStream_t NVMatrix::getDefaultStream(int deviceID) {
+hipStream_t HIPmatrix::getDefaultStream(int deviceID) {
     if (deviceID >= 0) {
         pthread_mutex_lock(_streamMutex);
         if (_defaultStreams.count(deviceID) == 0) {
             int oldDeviceID = getDeviceID();
-            NVMatrix::setDeviceID(deviceID);
+            HIPmatrix::setDeviceID(deviceID);
             checkCudaErrors(hipStreamCreateWithFlags(&_defaultStreams[deviceID], hipStreamNonBlocking));
-            NVMatrix::setDeviceID(oldDeviceID);
+            HIPmatrix::setDeviceID(oldDeviceID);
         }
         hipStream_t s = _defaultStreams[deviceID];
         pthread_mutex_unlock(_streamMutex);
@@ -456,19 +456,19 @@ hipStream_t NVMatrix::getDefaultStream(int deviceID) {
     return 0;
 }
 
-void NVMatrix::syncDevice() {
+void HIPmatrix::syncDevice() {
     checkCudaErrors(hipDeviceSynchronize());
 }
 
-void NVMatrix::syncStream(hipStream_t stream) {
+void HIPmatrix::syncStream(hipStream_t stream) {
     checkCudaErrors(hipStreamSynchronize(stream));
 }
 
-void NVMatrix::syncStream() {
+void HIPmatrix::syncStream() {
     syncStream(getDefaultStream());
 }
 
-curandState* NVMatrix::getCurandState() {
+curandState* HIPmatrix::getCurandState() {
     /*
      * Even though we're only reading from the map here, it's important to grab
      * the mutex because another thread may be writing to it.
@@ -481,7 +481,7 @@ curandState* NVMatrix::getCurandState() {
     return r;
 }
 
-curandState* NVMatrix::getCurandState(int numStreams) {
+curandState* HIPmatrix::getCurandState(int numStreams) {
     int d = getDeviceID();
     pthread_mutex_lock(_rndMutex);
     assert(isRndInitialized(true));
@@ -495,7 +495,7 @@ curandState* NVMatrix::getCurandState(int numStreams) {
     return getCurandState();
 }
 
-int NVMatrix::getDataDeviceID() const {
+int HIPmatrix::getDataDeviceID() const {
     if (getDevData() == NULL) {
         return DEVICE_NULL;
     }
@@ -505,7 +505,7 @@ int NVMatrix::getDataDeviceID() const {
 }
 
 
-int NVMatrix::getDeviceID() {
+int HIPmatrix::getDeviceID() {
     int d;
     checkCudaErrors(hipGetDevice(&d));
 //    if (d == 0) {
@@ -514,7 +514,7 @@ int NVMatrix::getDeviceID() {
     return d;
 }
 
-void NVMatrix::setDeviceID(int d) {
+void HIPmatrix::setDeviceID(int d) {
     assert(d >= 0);
 //    printf("Setting device to %d\n", d);
 //    if (d == 0) {
@@ -523,7 +523,7 @@ void NVMatrix::setDeviceID(int d) {
     checkCudaErrors(hipSetDevice(d));
 }
 
-bool NVMatrix::canAccessPeer(int srcDevice, int tgtDevice) {
+bool HIPmatrix::canAccessPeer(int srcDevice, int tgtDevice) {
     if (srcDevice == tgtDevice) {
         return true;
     }
@@ -532,7 +532,7 @@ bool NVMatrix::canAccessPeer(int srcDevice, int tgtDevice) {
     return canAccess;
 }
 
-bool NVMatrix::isRndInitialized(bool haveLock) {
+bool HIPmatrix::isRndInitialized(bool haveLock) {
     if (!haveLock) {
         pthread_mutex_lock(_rndMutex);
     }
@@ -543,11 +543,11 @@ bool NVMatrix::isRndInitialized(bool haveLock) {
     return b;
 }
 
-bool NVMatrix::isRndInitialized() {
+bool HIPmatrix::isRndInitialized() {
     return isRndInitialized(false);
 }
 
-void NVMatrix::destroyRandom() {
+void HIPmatrix::destroyRandom() {
     int d = getDeviceID();
     pthread_mutex_lock(_rndMutex);
     assert(isRndInitialized(true));
@@ -558,30 +558,30 @@ void NVMatrix::destroyRandom() {
     pthread_mutex_unlock(_rndMutex);
 }
 
-void NVMatrix::binarizeProbs() {
+void HIPmatrix::binarizeProbs() {
     binarizeProbs(*this);
 }
 
-void NVMatrix::binarizeProbs(NVMatrix& target) {
+void HIPmatrix::binarizeProbs(HIPmatrix& target) {
     _unaryRandomize(target, BinarizeUnaryRandomizer());
 }
 
-void NVMatrix::randomizeUniform() {
+void HIPmatrix::randomizeUniform() {
     assert(isContiguous());
     assert(isRndInitialized());
 //    CURAND_CALL(curandGenerateUniform(rndGen, _devData, getNumElements()));
     _unaryRandomize(*this, UniformUnaryRandomizer());
 }
 
-void NVMatrix::randomizeGaussian() {
+void HIPmatrix::randomizeGaussian() {
     randomizeGaussian(1);
 }
 
-void NVMatrix::randomizeGaussian(float stdev) {
+void HIPmatrix::randomizeGaussian(float stdev) {
     randomizeGaussian(0, stdev);
 }
 
-void NVMatrix::randomizeGaussian(float mean, float stdev) {
+void HIPmatrix::randomizeGaussian(float mean, float stdev) {
     assert(isContiguous());
     assert(isRndInitialized());
 //    CURAND_CALL(curandGenerateNormal(rndGen, _devData, getNumElements(), mean, stdev));
@@ -592,39 +592,39 @@ void NVMatrix::randomizeGaussian(float mean, float stdev) {
  * Kind of a hack since we don't actually need the contents of this matrix for it,
  * so we don't really need a binary randomizer.
  */
-void NVMatrix::randomizeGaussian(NVMatrix& stdevs) {
+void HIPmatrix::randomizeGaussian(HIPmatrix& stdevs) {
     randomizeGaussian(0, stdevs);
 }
 
-void NVMatrix::randomizeGaussian(float mean, NVMatrix& stdevs) {
+void HIPmatrix::randomizeGaussian(float mean, HIPmatrix& stdevs) {
     _binaryRandomize(stdevs, *this, GaussianBinaryRandomizer(mean));
 }
 
-void NVMatrix::randomizeGaussian(float mean, float stdevMult, NVMatrix& stdevs) {
+void HIPmatrix::randomizeGaussian(float mean, float stdevMult, HIPmatrix& stdevs) {
     _binaryRandomize(stdevs, *this, ScaledGaussianBinaryRandomizer(mean, stdevMult));
 }
 
-void NVMatrix::addGaussianNoise() {
+void HIPmatrix::addGaussianNoise() {
     addGaussianNoise(1);
 }
 
-void NVMatrix::addGaussianNoise(float stdev) {
+void HIPmatrix::addGaussianNoise(float stdev) {
     addGaussianNoise(stdev, *this);
 }
 
-void NVMatrix::addGaussianNoise(float stdev, NVMatrix& target) {
+void HIPmatrix::addGaussianNoise(float stdev, HIPmatrix& target) {
     _unaryRandomize(target, AddGaussianUnaryRandomizer(stdev));
 }
 
-void NVMatrix::addGaussianNoise(NVMatrix& stdevs, bool var) {
+void HIPmatrix::addGaussianNoise(HIPmatrix& stdevs, bool var) {
     addGaussianNoise(stdevs, var, *this);
 }
 
-void NVMatrix::addGaussianNoise(NVMatrix& stdevs) {
+void HIPmatrix::addGaussianNoise(HIPmatrix& stdevs) {
     addGaussianNoise(stdevs, false, *this);
 }
 
-void NVMatrix::addGaussianNoise(NVMatrix& stdevs, bool var, NVMatrix& target) {
+void HIPmatrix::addGaussianNoise(HIPmatrix& stdevs, bool var, HIPmatrix& target) {
     if (var) {
         _binaryRandomize(stdevs, target, AddGaussianBinaryRandomizer<true>());
     } else {
@@ -632,31 +632,31 @@ void NVMatrix::addGaussianNoise(NVMatrix& stdevs, bool var, NVMatrix& target) {
     }
 }
 
-void NVMatrix::biggerThan(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::biggerThan(HIPmatrix& b, HIPmatrix& target) {
     applyBinary(NVMatrixBinaryOps::BiggerThan(), b, target);
 }
 
-void NVMatrix::biggerThan(NVMatrix& b) {
+void HIPmatrix::biggerThan(HIPmatrix& b) {
     biggerThan(b, *this);
 }
 
-void NVMatrix::equals(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::equals(HIPmatrix& b, HIPmatrix& target) {
     applyBinary(NVMatrixBinaryOps::Equals(), b, target);
 }
 
-void NVMatrix::equals(NVMatrix& m) {
+void HIPmatrix::equals(HIPmatrix& m) {
     equals(m, *this);
 }
 
-void NVMatrix::biggerThanVector(NVMatrix& vec, NVMatrix& target) {
+void HIPmatrix::biggerThanVector(HIPmatrix& vec, HIPmatrix& target) {
     applyBinaryV(NVMatrixBinaryOps::BiggerThan(), vec, target);
 }
 
-void NVMatrix::biggerThanVector(NVMatrix& vec) {
+void HIPmatrix::biggerThanVector(HIPmatrix& vec) {
     biggerThanVector(vec, *this);
 }
 
-void NVMatrix::_checkBounds(int startRow, int endRow, int startCol, int endCol) const {
+void HIPmatrix::_checkBounds(int startRow, int endRow, int startCol, int endCol) const {
     assert(startRow >= 0 && startRow <= _numRows);
     assert(endRow >= startRow && endRow <= _numRows);
 
@@ -668,7 +668,7 @@ void NVMatrix::_checkBounds(int startRow, int endRow, int startCol, int endCol) 
  * The only place where stride is supported for now!
  * Will ALWAYS return a view of the original data, sometimes non-contiguous.
  */
-NVMatrix& NVMatrix::slice(int startRow, int endRow, int startCol, int endCol) const {
+HIPmatrix& HIPmatrix::slice(int startRow, int endRow, int startCol, int endCol) const {
     endRow = endRow < 0 ? this->_numRows : endRow;
     endCol = endCol < 0 ? this->_numCols : endCol;
     _checkBounds(startRow, endRow, startCol, endCol);
@@ -680,7 +680,7 @@ NVMatrix& NVMatrix::slice(int startRow, int endRow, int startCol, int endCol) co
 }
 
 /* this will NEVER return a view */
-void NVMatrix::slice(int startRow, int endRow, int startCol, int endCol, NVMatrix& target) const {
+void HIPmatrix::slice(int startRow, int endRow, int startCol, int endCol, HIPmatrix& target) const {
     endRow = endRow < 0 ? this->_numRows : endRow;
     endCol = endCol < 0 ? this->_numCols : endCol;
     _checkBounds(startRow, endRow, startCol, endCol);
@@ -692,23 +692,23 @@ void NVMatrix::slice(int startRow, int endRow, int startCol, int endCol, NVMatri
     this->copy(target, startRow, endRow, startCol, endCol, 0, 0);
 }
 
-NVMatrix& NVMatrix::sliceRows(int startRow, int endRow) const {
+HIPmatrix& HIPmatrix::sliceRows(int startRow, int endRow) const {
     return slice(startRow, endRow, 0, -1);
 }
 
-void NVMatrix::sliceRows(int startRow, int endRow, NVMatrix& target) const {
+void HIPmatrix::sliceRows(int startRow, int endRow, HIPmatrix& target) const {
     slice(startRow, endRow, 0, -1, target);
 }
 
-NVMatrix& NVMatrix::sliceCols(int startCol, int endCol) const {
+HIPmatrix& HIPmatrix::sliceCols(int startCol, int endCol) const {
     return slice(0, -1, startCol, endCol);
 }
 
-void NVMatrix::sliceCols(int startCol, int endCol, NVMatrix& target) const {
+void HIPmatrix::sliceCols(int startCol, int endCol, HIPmatrix& target) const {
     slice(0, -1, startCol, endCol, target);
 }
 
-NVMatrixV& NVMatrix::splitRows(int numParts) {
+NVMatrixV& HIPmatrix::splitRows(int numParts) {
     assert(getNumRows() % numParts == 0);
     NVMatrixV& v = *new NVMatrixV();
     int partSize = getNumRows() / numParts;
@@ -718,7 +718,7 @@ NVMatrixV& NVMatrix::splitRows(int numParts) {
     return v;
 }
 
-NVMatrixV& NVMatrix::splitCols(int numParts) {
+NVMatrixV& HIPmatrix::splitCols(int numParts) {
     assert(getNumCols() % numParts == 0);
     NVMatrixV& v = *new NVMatrixV();
     int partSize = getNumCols() / numParts;
@@ -732,7 +732,7 @@ NVMatrixV& NVMatrix::splitCols(int numParts) {
  * Guaranteed to not change the data if the number of elements doesn't change.
  * So you can use this to "reshape" a matrix.
  */
-bool NVMatrix::resize(int numRows, int numCols, bool trans) {
+bool HIPmatrix::resize(int numRows, int numCols, bool trans) {
     setTrans(trans);
     bool reallocated = false;
     if (numRows != _numRows || numCols != _numCols) {
@@ -756,21 +756,21 @@ bool NVMatrix::resize(int numRows, int numCols, bool trans) {
     return reallocated;
 }
 
-bool NVMatrix::resize(int numRows, int numCols) {
+bool HIPmatrix::resize(int numRows, int numCols) {
     return resize(numRows, numCols, isTrans());
 }
 
-bool NVMatrix::resize(const NVMatrix& like) {
+bool HIPmatrix::resize(const HIPmatrix& like) {
     setTrans(like.isTrans());
     return resize(like.getNumRows(), like.getNumCols());
 }
 
-bool NVMatrix::resize(const Matrix& like) {
+bool HIPmatrix::resize(const Matrix& like) {
     setTrans(like.isTrans());
     return resize(like.getNumRows(), like.getNumCols());
 }
 
-void NVMatrix::reshape(int numRows, int numCols) {
+void HIPmatrix::reshape(int numRows, int numCols) {
     assert(isContiguous());
     assert(_numElements == numRows*numCols);
     _numRows = numRows;
@@ -778,25 +778,25 @@ void NVMatrix::reshape(int numRows, int numCols) {
     _stride = getLeadingDim();
 }
 
-NVMatrix& NVMatrix::reshaped(int numRows, int numCols) const {
+HIPmatrix& HIPmatrix::reshaped(int numRows, int numCols) const {
     assert(isContiguous());
     assert(_numElements == numRows*numCols);
     return construct(new MemorySegment(*_memSegment), numRows, numCols, -1, _isTrans);
 }
 
-void NVMatrix::copy(NVMatrix &dest, int srcStartRow, int srcEndRow,
+void HIPmatrix::copy(HIPmatrix &dest, int srcStartRow, int srcEndRow,
                     int srcStartCol, int srcEndCol,
                     int destStartRow, int destStartCol) const {
     copy(dest, srcStartRow, srcEndRow, srcStartCol, srcEndCol, destStartRow, destStartCol, getDefaultStream());
 }
 
-void NVMatrix::copy(NVMatrix &dest, int srcStartRow, int srcEndRow,
+void HIPmatrix::copy(HIPmatrix &dest, int srcStartRow, int srcEndRow,
                     int srcStartCol, int srcEndCol,
                     int destStartRow, int destStartCol, hipStream_t stream) const {
     srcEndRow = srcEndRow < 0 ? _numRows : srcEndRow;
     srcEndCol = srcEndCol < 0 ? _numCols : srcEndCol;
-    NVMatrix* srcSlice = &slice(srcStartRow, srcEndRow, srcStartCol, srcEndCol);
-    NVMatrix* destSlice = &dest.slice(destStartRow, destStartRow + srcEndRow - srcStartRow, destStartCol, destStartCol + srcEndCol - srcStartCol);
+    HIPmatrix* srcSlice = &slice(srcStartRow, srcEndRow, srcStartCol, srcEndCol);
+    HIPmatrix* destSlice = &dest.slice(destStartRow, destStartRow + srcEndRow - srcStartRow, destStartCol, destStartCol + srcEndCol - srcStartCol);
     if (srcSlice->isContiguous() && destSlice->isContiguous() && srcSlice->isSameDims(*destSlice) && srcSlice->isTrans() == destSlice->isTrans()) {
         // The commonest case.
         checkCudaErrors(hipMemcpyAsync(destSlice->getDevData(), srcSlice->getDevData(), srcSlice->getNumDataBytes(), hipMemcpyDefault, stream));
@@ -808,28 +808,28 @@ void NVMatrix::copy(NVMatrix &dest, int srcStartRow, int srcEndRow,
 }
 
 
-NVMatrix& NVMatrix::getTranspose() {
+HIPmatrix& HIPmatrix::getTranspose() {
     return construct(new MemorySegment(*_memSegment), _numCols, _numRows, _stride, !_isTrans);
 }
 
-NVMatrix& NVMatrix::getClone() {
+HIPmatrix& HIPmatrix::getClone() {
     return construct(new MemorySegment(*_memSegment), _numRows, _numCols, _stride, _isTrans);
 }
 
-void NVMatrix::transpose(NVMatrix& target) {
+void HIPmatrix::transpose(HIPmatrix& target) {
     flipTrans(target);
     target.setTrans(!target.isTrans());
     target.reshape(target.getNumCols(), target.getNumRows());
 }
 
-void NVMatrix::transpose() {
+void HIPmatrix::transpose() {
     int tmp = _numCols;
     _numCols = _numRows;
     _numRows = tmp;
     _isTrans = !_isTrans;
 }
 
-bool NVMatrix::transpose(bool trans) {
+bool HIPmatrix::transpose(bool trans) {
     bool oldTrans = _isTrans;
     if (oldTrans != trans) {
         transpose();
@@ -844,17 +844,17 @@ bool NVMatrix::transpose(bool trans) {
  * This is not equivalent to a "hard transpose". The resultant matrix still has
  * the same dimensions, its layout in memory just changes.
  */
-NVMatrix& NVMatrix::flipTrans() {
-    NVMatrix& meTrans = construct(*this);
+HIPmatrix& HIPmatrix::flipTrans() {
+    HIPmatrix& meTrans = construct(*this);
     flipTrans(meTrans);
     return meTrans;
 }
 
-void NVMatrix::flipTrans(NVMatrix& target) {
+void HIPmatrix::flipTrans(HIPmatrix& target) {
     flipTrans(target, getDefaultStream());
 }
 
-void NVMatrix::flipTrans(NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::flipTrans(HIPmatrix& target, hipStream_t stream) {
     assert(&target != this);
     target.resize(_numRows, _numCols);
     target.setTrans(!isTrans());
@@ -863,19 +863,19 @@ void NVMatrix::flipTrans(NVMatrix& target, hipStream_t stream) {
     apply(NVMatrixOps::Identity(), target, stream);
 }
 
-void NVMatrix::squaredDiff(NVMatrix& b) {
+void HIPmatrix::squaredDiff(HIPmatrix& b) {
     squaredDiff(b, *this);
 }
 
-void NVMatrix::squaredDiff(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::squaredDiff(HIPmatrix& b, HIPmatrix& target) {
     applyBinary(NVMatrixBinaryOps::SquaredDiff(), b, target);
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target) {
-    add(b, scaleA, scaleB, target, NVMatrix::getDefaultStream());
+void HIPmatrix::add(HIPmatrix& b, float scaleA, float scaleB, HIPmatrix& target) {
+    add(b, scaleA, scaleB, target, HIPmatrix::getDefaultStream());
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::add(HIPmatrix& b, float scaleA, float scaleB, HIPmatrix& target, hipStream_t stream) {
     if (scaleA == 0) {
         b.scale(scaleB, target, stream);
     } else if (scaleB == 0) {
@@ -889,55 +889,55 @@ void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target, hi
     }
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleB, NVMatrix& target) {
+void HIPmatrix::add(HIPmatrix& b, float scaleB, HIPmatrix& target) {
     add(b, 1, scaleB, target);
 }
 
-void NVMatrix::add(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::add(HIPmatrix& b, HIPmatrix& target) {
     add(b, 1, target);
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleB) {
+void HIPmatrix::add(HIPmatrix& b, float scaleB) {
     add(b, scaleB, *this);
 }
 
-void NVMatrix::add(NVMatrix& b, float scaleA, float scaleB) {
+void HIPmatrix::add(HIPmatrix& b, float scaleA, float scaleB) {
     add(b, scaleA, scaleB, *this);
 }
 
-void NVMatrix::add(NVMatrix& b) {
+void HIPmatrix::add(HIPmatrix& b) {
     add(b, 1, *this);
 }
 
-void NVMatrix::subtract(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::subtract(HIPmatrix& b, HIPmatrix& target) {
     add(b, -1, target);
 }
 
-void NVMatrix::subtract(NVMatrix& b) {
+void HIPmatrix::subtract(HIPmatrix& b) {
     add(b, -1);
 }
 
-void NVMatrix::eltwiseMult(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::eltwiseMult(HIPmatrix& b, HIPmatrix& target) {
     applyBinary(NVMatrixBinaryOps::Multiply(), b, target);
 }
 
-void NVMatrix::eltwiseMult(NVMatrix& b) {
+void HIPmatrix::eltwiseMult(HIPmatrix& b) {
     eltwiseMult(b, *this);
 }
 
-void NVMatrix::eltwiseDivide(NVMatrix& b, NVMatrix& target) {
+void HIPmatrix::eltwiseDivide(HIPmatrix& b, HIPmatrix& target) {
     applyBinary(NVMatrixBinaryOps::Divide(), b, target);
 }
 
-void NVMatrix::eltwiseDivide(NVMatrix& b) {
+void HIPmatrix::eltwiseDivide(HIPmatrix& b) {
     eltwiseDivide(b, *this);
 }
 
-void NVMatrix::tile(int timesY, int timesX, NVMatrix& target) {
+void HIPmatrix::tile(int timesY, int timesX, HIPmatrix& target) {
     tile(timesY, timesX, target, getDefaultStream());
 }
 
-void NVMatrix::tile(int timesY, int timesX, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::tile(int timesY, int timesX, HIPmatrix& target, hipStream_t stream) {
     assert(isContiguous() && target.isContiguous());
     assert(timesX > 0 && timesY > 0);
     target.resize(_numRows*timesY, _numCols*timesX);
@@ -950,60 +950,60 @@ void NVMatrix::tile(int timesY, int timesX, NVMatrix& target, hipStream_t stream
     getLastCudaError("Kernel execution failed");
 }
 
-void NVMatrix::addVector(NVMatrix& vec, float scaleVec, NVMatrix& target) {
+void HIPmatrix::addVector(HIPmatrix& vec, float scaleVec, HIPmatrix& target) {
     addVector(vec, scaleVec, target, getDefaultStream());
 }
 
-void NVMatrix::addVector(NVMatrix& vec, float scaleVec, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::addVector(HIPmatrix& vec, float scaleVec, HIPmatrix& target, hipStream_t stream) {
     applyBinaryV(NVMatrixBinaryOps::ScaledAdd(scaleVec), vec, target, stream);
 }
 
-void NVMatrix::addVector(NVMatrix& vec) {
+void HIPmatrix::addVector(HIPmatrix& vec) {
     addVector(vec, 1);
 }
 
-void NVMatrix::addVector(NVMatrix& vec, float scaleVec) {
+void HIPmatrix::addVector(HIPmatrix& vec, float scaleVec) {
     addVector(vec, scaleVec, *this);
 }
 
-void NVMatrix::addVector(NVMatrix& vec, NVMatrix& target) {
+void HIPmatrix::addVector(HIPmatrix& vec, HIPmatrix& target) {
     addVector(vec, 1, target);
 }
 
-void NVMatrix::equalsVector(NVMatrix& vec, NVMatrix& target) {
+void HIPmatrix::equalsVector(HIPmatrix& vec, HIPmatrix& target) {
     applyBinaryV(NVMatrixBinaryOps::Equals(), vec, target);
 }
 
-void NVMatrix::equalsVector(NVMatrix& vec) {
+void HIPmatrix::equalsVector(HIPmatrix& vec) {
     equalsVector(vec, *this);
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec, NVMatrix& target) {
+void HIPmatrix::eltwiseMultByVector(HIPmatrix& vec, HIPmatrix& target) {
     eltwiseMultByVector(vec, target, getDefaultStream());
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::eltwiseMultByVector(HIPmatrix& vec, HIPmatrix& target, hipStream_t stream) {
     applyBinaryV(NVMatrixBinaryOps::Multiply(), vec, target, stream);
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec, hipStream_t stream) {
+void HIPmatrix::eltwiseMultByVector(HIPmatrix& vec, hipStream_t stream) {
     eltwiseMultByVector(vec, *this, stream);
 }
 
-void NVMatrix::eltwiseMultByVector(NVMatrix& vec) {
+void HIPmatrix::eltwiseMultByVector(HIPmatrix& vec) {
     eltwiseMultByVector(vec, *this);
 }
 
-void NVMatrix::eltwiseDivideByVector(NVMatrix& vec) {
+void HIPmatrix::eltwiseDivideByVector(HIPmatrix& vec) {
     eltwiseDivideByVector(vec,  *this);
 }
 
-void NVMatrix::eltwiseDivideByVector(NVMatrix& vec, NVMatrix& target) {
+void HIPmatrix::eltwiseDivideByVector(HIPmatrix& vec, HIPmatrix& target) {
     applyBinaryV(NVMatrixBinaryOps::Divide(), vec, target);
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
     _aggregate(axis, target, agg, uop, bop, stream, NULL);
 }
 
@@ -1012,7 +1012,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
  * TODO: this function is _really_ bad for very long aggregations of few columns.
  */
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, NVMatrix* tmp) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, HIPmatrix* tmp) {
     assert(axis == 0 || axis == 1);
     assert(isContiguous()  && target.isContiguous());
     assert(&target != this);
@@ -1035,7 +1035,7 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
             const int sumLength = 128;
             bool deltmp = tmp == NULL;
             if (tmp == NULL) {
-                tmp = new NVMatrix(false);
+                tmp = new HIPmatrix(false);
             }
 
             int numBlocksX = DIVUP(width, NUM_SUM_COLS_THREADS_PER_BLOCK);
@@ -1131,165 +1131,165 @@ void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, Bina
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, UnaryOp uop, BinaryOp bop) {
     _aggregate(axis, target, agg, uop, bop, getDefaultStream());
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, BinaryOp bop) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, getDefaultStream());
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, BinaryOp bop, hipStream_t stream) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, stream);
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop) {
-    NVMatrix &sumVec = construct();
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop) {
+    HIPmatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop);
     return sumVec;
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
-    NVMatrix &sumVec = construct();
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream) {
+    HIPmatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop, stream);
     return sumVec;
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop) {
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, BinaryOp bop) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop);
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream) {
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop, stream);
 }
 
 
 
 template<class Agg, class UnaryOp, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, NVMatrix& tmp) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, HIPmatrix& tmp) {
     _aggregate(axis, target, agg, uop, bop, getDefaultStream(), tmp);
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, NVMatrix& tmp) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, BinaryOp bop, HIPmatrix& tmp) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, getDefaultStream(), &tmp);
 }
 
 template<class Agg, class BinaryOp>
-void NVMatrix::_aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
+void HIPmatrix::_aggregate(int axis, HIPmatrix& target, Agg agg, BinaryOp bop, hipStream_t stream, HIPmatrix& tmp) {
     _aggregate(axis, target, agg, NVMatrixOps::Identity(), bop, stream, &tmp);
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, NVMatrix& tmp) {
-    NVMatrix &sumVec = construct();
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, HIPmatrix& tmp) {
+    HIPmatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop, tmp);
     return sumVec;
 }
 
 template<class Agg, class UnaryOp, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
-    NVMatrix &sumVec = construct();
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, HIPmatrix& tmp) {
+    HIPmatrix &sumVec = construct();
     _aggregate(axis, sumVec, agg, uop, bop, stream, tmp);
     return sumVec;
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, NVMatrix& tmp) {
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, BinaryOp bop, HIPmatrix& tmp) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop, tmp);
 }
 
 template<class Agg, class BinaryOp>
-NVMatrix& NVMatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp) {
+HIPmatrix& HIPmatrix::_aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream, HIPmatrix& tmp) {
     return _aggregate(axis, agg, NVMatrixOps::Identity(), bop, stream, tmp);
 }
 
-void NVMatrix::inRangeInc(float lower, float upper) {
+void HIPmatrix::inRangeInc(float lower, float upper) {
     inRangeInc(lower, upper, *this);
 }
-void NVMatrix::inRangeInc(float lower, float upper, NVMatrix& target) {
+void HIPmatrix::inRangeInc(float lower, float upper, HIPmatrix& target) {
     apply(NVMatrixOps::InRange<false>(lower, upper), target);
 }
 
-void NVMatrix::inRangeExc(float lower, float upper) {
+void HIPmatrix::inRangeExc(float lower, float upper) {
     inRangeExc(lower, upper, *this);
 }
 
-void NVMatrix::inRangeExc(float lower, float upper, NVMatrix& target) {
+void HIPmatrix::inRangeExc(float lower, float upper, HIPmatrix& target) {
     apply(NVMatrixOps::InRange<true>(lower, upper), target);
 }
 
-void NVMatrix::biggerThanScalar(float scalar) {
+void HIPmatrix::biggerThanScalar(float scalar) {
     biggerThanScalar(scalar, *this);
 }
 
-void NVMatrix::biggerThanScalar(float scalar, NVMatrix& target) {
+void HIPmatrix::biggerThanScalar(float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::BiggerThanScalar(scalar), target);
 }
 
-void NVMatrix::smallerThanScalar(float scalar) {
+void HIPmatrix::smallerThanScalar(float scalar) {
     smallerThanScalar(scalar, *this);
 }
 
-void NVMatrix::smallerThanScalar(float scalar, NVMatrix& target) {
+void HIPmatrix::smallerThanScalar(float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::SmallerThanScalar(scalar), target);
 }
 
-void NVMatrix::addScalar(float scaleThis, float scalar, NVMatrix& target) {
+void HIPmatrix::addScalar(float scaleThis, float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::WeightedAddScalar(scaleThis, scalar), target);
 }
 
-void NVMatrix::addScalar(float scalar, NVMatrix& target) {
+void HIPmatrix::addScalar(float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::AddScalar(scalar), target);
 }
 
-void NVMatrix::addScalar(float scalar) {
+void HIPmatrix::addScalar(float scalar) {
     addScalar(scalar, *this);
 }
 
-void NVMatrix::minWithScalar(float scalar, NVMatrix& target) {
+void HIPmatrix::minWithScalar(float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::MinWithScalar(scalar), target);
 }
 
-void NVMatrix::minWithScalar(float scalar) {
+void HIPmatrix::minWithScalar(float scalar) {
     minWithScalar(scalar, *this);
 }
 
-void NVMatrix::maxWithScalar(float scalar, NVMatrix& target) {
+void HIPmatrix::maxWithScalar(float scalar, HIPmatrix& target) {
     apply(NVMatrixOps::MaxWithScalar(scalar), target);
 }
 
-void NVMatrix::maxWithScalar(float scalar) {
+void HIPmatrix::maxWithScalar(float scalar) {
     maxWithScalar(scalar, *this);
 }
 
-void NVMatrix::pow(float p, NVMatrix& target) {
+void HIPmatrix::pow(float p, HIPmatrix& target) {
     apply(NVMatrixOps::Pow(p), target);
 }
 
-void NVMatrix::pow(float p) {
+void HIPmatrix::pow(float p) {
     pow(p, *this);
 }
 
-void NVMatrix::scale(float _scale) {
+void HIPmatrix::scale(float _scale) {
     scale(_scale, *this);
 }
 
-void NVMatrix::scale(float _scale, hipStream_t stream) {
+void HIPmatrix::scale(float _scale, hipStream_t stream) {
     scale(_scale, *this, stream);
 }
 
-void NVMatrix::scale(float _scale, NVMatrix& target) {
-    scale(_scale, target, NVMatrix::getDefaultStream());
+void HIPmatrix::scale(float _scale, HIPmatrix& target) {
+    scale(_scale, target, HIPmatrix::getDefaultStream());
 }
 
-void NVMatrix::scale(float _scale, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::scale(float _scale, HIPmatrix& target, hipStream_t stream) {
     if (_scale != 1 || &target != this) { // optimize away scale by 1
         if (_scale == 1) {
             copy(target, stream);
@@ -1299,28 +1299,28 @@ void NVMatrix::scale(float _scale, NVMatrix& target, hipStream_t stream) {
     }
 }
 
-void NVMatrix::zero() {
+void HIPmatrix::zero() {
     apply(NVMatrixOps::Zero());
 }
 
-void NVMatrix::zero(NVMatrix& like) {
+void HIPmatrix::zero(HIPmatrix& like) {
     resize(like);
     zero();
 }
 
-void NVMatrix::max(int axis, NVMatrix& target) {
+void HIPmatrix::max(int axis, HIPmatrix& target) {
     _aggregate(axis, target, NVMatrixAggs::Max(), NVMatrixBinaryOps::Second());
 }
 
-void NVMatrix::max(int axis, NVMatrix& target, NVMatrix& tmp) {
+void HIPmatrix::max(int axis, HIPmatrix& target, HIPmatrix& tmp) {
     _aggregate(axis, target, NVMatrixAggs::Max(), NVMatrixBinaryOps::Second(), tmp);
 }
 
-void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum) {
+void HIPmatrix::addSum(HIPmatrix& a, int axis, float scaleThis, float scaleSum) {
     addSum(a, axis, scaleThis, scaleSum, getDefaultStream());
 }
 
-void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum, hipStream_t stream) {
+void HIPmatrix::addSum(HIPmatrix& a, int axis, float scaleThis, float scaleSum, hipStream_t stream) {
     if (scaleThis != 0) {
         a._aggregate(axis, *this, NVMatrixAggs::Sum(), NVMatrixBinaryOps::WeightedAdd(scaleThis, scaleSum), stream);
     } else {
@@ -1328,11 +1328,11 @@ void NVMatrix::addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum, hi
     }
 }
 
-void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax) {
+void HIPmatrix::addMax(HIPmatrix& a, int axis, float scaleThis, float scaleMax) {
     addMax(a, axis, scaleThis, scaleMax, getDefaultStream());
 }
 
-void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax, hipStream_t stream) {
+void HIPmatrix::addMax(HIPmatrix& a, int axis, float scaleThis, float scaleMax, hipStream_t stream) {
     if (scaleThis != 0) {
         a._aggregate(axis, *this, NVMatrixAggs::Max(), NVMatrixBinaryOps::WeightedAdd(scaleThis, scaleMax), stream);
     } else {
@@ -1340,96 +1340,96 @@ void NVMatrix::addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax, hi
     }
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target) {
+void HIPmatrix::sum(int axis, HIPmatrix& target) {
     sum(axis, target, getDefaultStream());
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::sum(int axis, HIPmatrix& target, hipStream_t stream) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixBinaryOps::Second(), stream);
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target, NVMatrix& tmp) {
+void HIPmatrix::sum(int axis, HIPmatrix& target, HIPmatrix& tmp) {
     sum(axis, target, getDefaultStream(), tmp);
 }
 
-void NVMatrix::sum(int axis, NVMatrix& target, hipStream_t stream, NVMatrix& tmp) {
+void HIPmatrix::sum(int axis, HIPmatrix& target, hipStream_t stream, HIPmatrix& tmp) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixBinaryOps::Second(), stream, tmp);
 }
 
-void NVMatrix::sumOfSquares(int axis, NVMatrix& target) {
+void HIPmatrix::sumOfSquares(int axis, HIPmatrix& target) {
     sumOfSquares(axis, target, getDefaultStream());
 }
 
-void NVMatrix::sumOfSquares(int axis, NVMatrix& target, hipStream_t stream) {
+void HIPmatrix::sumOfSquares(int axis, HIPmatrix& target, hipStream_t stream) {
     _aggregate(axis, target, NVMatrixAggs::Sum(), NVMatrixOps::Square(), NVMatrixBinaryOps::Second(), stream);
 }
 
-void NVMatrix::min(int axis, NVMatrix& target) {
+void HIPmatrix::min(int axis, HIPmatrix& target) {
     _aggregate(axis, target, NVMatrixAggs::Min(), NVMatrixBinaryOps::Second());
 }
 
-NVMatrix& NVMatrix::max(int axis) {
+HIPmatrix& HIPmatrix::max(int axis) {
     return _aggregate(axis, NVMatrixAggs::Max(), NVMatrixBinaryOps::Second());
 }
 
-NVMatrix& NVMatrix::sum(int axis) {
+HIPmatrix& HIPmatrix::sum(int axis) {
     return _aggregate(axis, NVMatrixAggs::Sum(), NVMatrixBinaryOps::Second());
 }
 
-NVMatrix& NVMatrix::min(int axis) {
+HIPmatrix& HIPmatrix::min(int axis) {
     return _aggregate(axis, NVMatrixAggs::Min(), NVMatrixBinaryOps::Second());
 }
 
-NVMatrix& NVMatrix::sumOfSquares(int axis) {
+HIPmatrix& HIPmatrix::sumOfSquares(int axis) {
     return _aggregate(axis, NVMatrixAggs::Sum(), NVMatrixOps::Square(), NVMatrixBinaryOps::Second());
 }
 
-void NVMatrix::_sum_setParams(int n, dim3* blocks, dim3* threads) {
+void HIPmatrix::_sum_setParams(int n, dim3* blocks, dim3* threads) {
     *threads = dim3(DP_BLOCKSIZE);
     *blocks = dim3(std::min(CPUSUM_MAX, DIVUP(n, DP_BLOCKSIZE)));
 }
 
-float NVMatrix::mean() {
+float HIPmatrix::mean() {
     return sum() / getNumElements();
 }
 
-float NVMatrix::sum() {
+float HIPmatrix::sum() {
     return _totalAgg(NVMatrixAggs::Sum());
 }
 
-float NVMatrix::sum(NVMatrix& tmpbuf) {
+float HIPmatrix::sum(HIPmatrix& tmpbuf) {
     return _totalAgg(NVMatrixAggs::Sum(), tmpbuf, getDefaultStream());
 }
 
-float NVMatrix::max() {
+float HIPmatrix::max() {
     return _totalAgg(NVMatrixAggs::Max());
 }
 
-float NVMatrix::min() {
+float HIPmatrix::min() {
     return _totalAgg(NVMatrixAggs::Min());
 }
 
-float NVMatrix::countNan() {
+float HIPmatrix::countNan() {
     return _totalAgg(NVMatrixAggs::CountNan());
 }
 
-float NVMatrix::countInf() {
+float HIPmatrix::countInf() {
     return _totalAgg(NVMatrixAggs::CountInf());
 }
 
 template<class Agg>
-float NVMatrix::_totalAgg(Agg agg) {
+float HIPmatrix::_totalAgg(Agg agg) {
     return _totalAgg(agg, getDefaultStream());
 }
 
 template<class Agg>
-float NVMatrix::_totalAgg(Agg agg, hipStream_t stream) {
-    NVMatrix tmp;
+float HIPmatrix::_totalAgg(Agg agg, hipStream_t stream) {
+    HIPmatrix tmp;
     return _totalAgg(agg, tmp, stream);
 }
 
 template<class Agg>
-float NVMatrix::_totalAgg(Agg agg, NVMatrix& tmpbuf, hipStream_t stream) {
+float HIPmatrix::_totalAgg(Agg agg, HIPmatrix& tmpbuf, hipStream_t stream) {
     assert(isContiguous());
     dim3 blocks, threads;
     // Sum most of it on GPU
@@ -1439,11 +1439,11 @@ float NVMatrix::_totalAgg(Agg agg, NVMatrix& tmpbuf, hipStream_t stream) {
     hipLaunchKernel(HIP_KERNEL_NAME(kTotalAgg), dim3(blocks), dim3(threads), 0, stream, getDevData(), tmpbuf.getDevData(), getNumElements(), agg);
     getLastCudaError("kTotalAgg: Kernel execution failed");
     // Don't need to sync because we copyToHost in the same stream, so it's serialized
-//    NVMatrix::syncStream(stream);
+//    HIPmatrix::syncStream(stream);
     return tmpbuf.cpuAgg(agg, stream);
 }
 template<class Agg>
-float NVMatrix::cpuAgg(Agg agg, hipStream_t stream) {
+float HIPmatrix::cpuAgg(Agg agg, hipStream_t stream) {
     Matrix bufCPU(getNumRows(), getNumCols());
     copyToHost(bufCPU, false, stream);
     if (getNumElements() > 1) { // Sum remainder on CPU
@@ -1464,25 +1464,25 @@ float NVMatrix::cpuAgg(Agg agg, hipStream_t stream) {
     return bufCPU(0,0);
 }
 
-float NVMatrix::dotProduct(NVMatrix& b) {
+float HIPmatrix::dotProduct(HIPmatrix& b) {
     return dotProduct(b, getDefaultStream());
 }
 
-float NVMatrix::dotProduct(NVMatrix& b, hipStream_t stream) {
-    NVMatrix tmp;
+float HIPmatrix::dotProduct(HIPmatrix& b, hipStream_t stream) {
+    HIPmatrix tmp;
     return dotProduct(b, tmp, stream);
 }
 
 /*
  * Fast dot product only for matrices with same transposedness.
  */
-float NVMatrix::dotProduct(NVMatrix& b, NVMatrix& tmp, hipStream_t stream) {
+float HIPmatrix::dotProduct(HIPmatrix& b, HIPmatrix& tmp, hipStream_t stream) {
     assert(isContiguous() && b.isContiguous());
     assert(isSameDims(b));
     assert(isTrans() == b.isTrans()); // see?
     dim3 blocks, threads;
     _sum_setParams(getNumElements(), &blocks, &threads);
-//    NVMatrix target(1, blocks.x);
+//    HIPmatrix target(1, blocks.x);
     tmp.resize(1, blocks.x);
     hipLaunchKernel(HIP_KERNEL_NAME(kDotProduct_r), dim3(blocks), dim3(threads), 0, stream, getDevData(), b.getDevData(), tmp.getDevData(), getNumElements());
     getLastCudaError("kDotProduct_r: Kernel execution failed");
@@ -1492,15 +1492,15 @@ float NVMatrix::dotProduct(NVMatrix& b, NVMatrix& tmp, hipStream_t stream) {
     return tmp.cpuAgg(NVMatrixAggs::Sum(), stream);
 }
 
-float NVMatrix::norm2() {
+float HIPmatrix::norm2() {
     return dotProduct(*this);
 }
 
-float NVMatrix::norm() {
+float HIPmatrix::norm() {
     return sqrt(norm2());
 }
 
-void NVMatrix::print(int startRow, int rows, int startCol, int cols) const {
+void HIPmatrix::print(int startRow, int rows, int startCol, int cols) const {
 //    hipDeviceSynchronize();
     syncDevice();
     Matrix hm = Matrix(_numRows, _numCols);
@@ -1508,32 +1508,32 @@ void NVMatrix::print(int startRow, int rows, int startCol, int cols) const {
     hm.print(startRow, rows, startCol, cols);
 }
 
-void NVMatrix::print(int rows, int cols) const {
+void HIPmatrix::print(int rows, int cols) const {
     print(0, rows, 0, cols);
 }
 
-void NVMatrix::printShape(const char* name) const {
+void HIPmatrix::printShape(const char* name) const {
     printf("%s: %dx%d\n", name, _numRows, _numCols);
 }
 
-void NVMatrix::alloc(int numElements) {
+void HIPmatrix::alloc(int numElements) {
     _memSegment = DEVICE_MEMORY_MANAGER::getInstance(getDeviceID()).malloc(numElements * sizeof(float));
 }
 
-void NVMatrix::dealloc() {
+void HIPmatrix::dealloc() {
     DEVICE_MEMORY_MANAGER::getInstance(_memSegment->getDeviceID()).free(_memSegment);
     _memSegment = NULL;
     deallocTexture();
 }
 
-void NVMatrix::deallocTexture() {
+void HIPmatrix::deallocTexture() {
     if (_texObj != 0) {
         checkCudaErrors(cudaDestroyTextureObject(_texObj));
         _texObj = 0;
     }
 }
 
-cudaTextureObject_t NVMatrix::getTextureObject() {
+cudaTextureObject_t HIPmatrix::getTextureObject() {
    if (_texObj == 0) {
        assert(isContiguous());
        //size_t memFree, memTotal;
@@ -1552,32 +1552,32 @@ cudaTextureObject_t NVMatrix::getTextureObject() {
    return _texObj;
 }
 
-NVMatrix& NVMatrix::construct() const {
-    return *new NVMatrix();
+HIPmatrix& HIPmatrix::construct() const {
+    return *new HIPmatrix();
 }
-NVMatrix& NVMatrix::construct(bool isTrans) const {
-    return *new NVMatrix(isTrans);
+HIPmatrix& HIPmatrix::construct(bool isTrans) const {
+    return *new HIPmatrix(isTrans);
 }
-NVMatrix& NVMatrix::construct(int numRows, int numCols, bool isTrans) const {
-    return *new NVMatrix(numRows, numCols, isTrans);
+HIPmatrix& HIPmatrix::construct(int numRows, int numCols, bool isTrans) const {
+    return *new HIPmatrix(numRows, numCols, isTrans);
 }
-NVMatrix& NVMatrix::construct(const Matrix& like, bool copy) const {
-    return *new NVMatrix(like, copy);
+HIPmatrix& HIPmatrix::construct(const Matrix& like, bool copy) const {
+    return *new HIPmatrix(like, copy);
 }
-NVMatrix& NVMatrix::construct(const NVMatrix& like, bool copy) const {
-    return *new NVMatrix(like, copy);
+HIPmatrix& HIPmatrix::construct(const HIPmatrix& like, bool copy) const {
+    return *new HIPmatrix(like, copy);
 }
-NVMatrix& NVMatrix::construct(const NVMatrix& like) const {
-    return *new NVMatrix(like);
+HIPmatrix& HIPmatrix::construct(const HIPmatrix& like) const {
+    return *new HIPmatrix(like);
 }
-NVMatrix& NVMatrix::construct(const Matrix& like) const {
-    return *new NVMatrix(like);
+HIPmatrix& HIPmatrix::construct(const Matrix& like) const {
+    return *new HIPmatrix(like);
 }
-NVMatrix& NVMatrix::construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const {
-    return *new NVMatrix(mem, numRows, numCols, stride, isTrans);
+HIPmatrix& HIPmatrix::construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const {
+    return *new HIPmatrix(mem, numRows, numCols, stride, isTrans);
 }
 
-std::pair<size_t, size_t> NVMatrix::getCudaMemorySize() {
+std::pair<size_t, size_t> HIPmatrix::getCudaMemorySize() {
     size_t memFree, memTotal;
     checkCudaErrors(hipMemGetInfo(&memFree, &memTotal));
     return std::pair<size_t,size_t>(memFree, memTotal);
@@ -1599,7 +1599,7 @@ HostNVMatrix::~HostNVMatrix() {
     }
     _deleted = true;
 }
-HostNVMatrix::HostNVMatrix() : NVMatrix() {
+HostNVMatrix::HostNVMatrix() : HIPmatrix() {
     _init(false);
 }
 HostNVMatrix::HostNVMatrix(bool isTrans) {
@@ -1616,14 +1616,14 @@ HostNVMatrix::HostNVMatrix(const Matrix& like, bool copy)  {
         copyFromHost(like);
     }
 }
-HostNVMatrix::HostNVMatrix(const NVMatrix& like, bool copy)  {
+HostNVMatrix::HostNVMatrix(const HIPmatrix& like, bool copy)  {
     _init(like.isTrans());
     resize(like.getNumRows(), like.getNumCols());
     if (copy) {
         like.copy(*this);
     }
 }
-HostNVMatrix::HostNVMatrix(const NVMatrix& like)  {
+HostNVMatrix::HostNVMatrix(const HIPmatrix& like)  {
     _init(like.isTrans());
     resize(like.getNumRows(), like.getNumCols());
 }
@@ -1632,31 +1632,31 @@ HostNVMatrix::HostNVMatrix(const Matrix& like) {
     resize(like.getNumRows(), like.getNumCols());
 }
 HostNVMatrix::HostNVMatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans)
-    : NVMatrix(mem, numRows, numCols, stride, isTrans) {
+    : HIPmatrix(mem, numRows, numCols, stride, isTrans) {
 }
 
-NVMatrix& HostNVMatrix::construct() const {
+HIPmatrix& HostNVMatrix::construct() const {
     return *new HostNVMatrix();
 }
-NVMatrix& HostNVMatrix::construct(bool isTrans) const {
+HIPmatrix& HostNVMatrix::construct(bool isTrans) const {
     return *new HostNVMatrix(isTrans);
 }
-NVMatrix& HostNVMatrix::construct(int numRows, int numCols, bool isTrans) const {
+HIPmatrix& HostNVMatrix::construct(int numRows, int numCols, bool isTrans) const {
     return *new HostNVMatrix(numRows, numCols, isTrans);
 }
-NVMatrix& HostNVMatrix::construct(const Matrix& like, bool copy) const {
+HIPmatrix& HostNVMatrix::construct(const Matrix& like, bool copy) const {
     return *new HostNVMatrix(like, copy);
 }
-NVMatrix& HostNVMatrix::construct(const NVMatrix& like, bool copy) const {
+HIPmatrix& HostNVMatrix::construct(const HIPmatrix& like, bool copy) const {
     return *new HostNVMatrix(like, copy);
 }
-NVMatrix& HostNVMatrix::construct(const NVMatrix& like) const {
+HIPmatrix& HostNVMatrix::construct(const HIPmatrix& like) const {
     return *new HostNVMatrix(like);
 }
-NVMatrix& HostNVMatrix::construct(const Matrix& like) const {
+HIPmatrix& HostNVMatrix::construct(const Matrix& like) const {
     return *new HostNVMatrix(like);
 }
-NVMatrix& HostNVMatrix::construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const {
+HIPmatrix& HostNVMatrix::construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const {
     return *new HostNVMatrix(mem, numRows, numCols, stride, isTrans);
 }
 

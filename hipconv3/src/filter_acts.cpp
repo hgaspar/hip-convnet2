@@ -1173,7 +1173,7 @@ __global__ void filterActs_YxX_sparse2(float* images, float* filters, float* tar
  * Other batch sizes will work, but but I made no attempt whatsoever
  * to make them work fast.
  */
- void _filterActs(NVMatrix& images, NVMatrix& filters, NVMatrix& targets,
+ void _filterActs(HIPMatrix& images, HIPMatrix& filters, HIPMatrix& targets,
                    int imgSizeY, int numModulesY, int numModulesX, int paddingStart, int moduleStride,
                    int numImgColors, int numGroups,
                    float scaleTargets, float scaleOutput, bool conv) {
@@ -1238,7 +1238,7 @@ __global__ void filterActs_YxX_sparse2(float* images, float* filters, float* tar
         assert(targets.getNumRows() == numFilters * numModules);
         assert(targets.getNumCols() == numImages);
     }
-    hipStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = HIPMatrix::getDefaultStream();
 
     // Auto-generated calling code...
     // NOTE: The calling code is set up such that if checkImgBounds is true, then imgsPerThread = 1.
@@ -2040,26 +2040,26 @@ __global__ void filterActs_YxX_sparse2(float* images, float* filters, float* tar
     getLastCudaError("filterActs: kernel execution failed");
 }
 
-void convFilterActs(NVMatrix& images, NVMatrix& filters, NVMatrix& targets,
+void convFilterActs(HIPMatrix& images, HIPMatrix& filters, HIPMatrix& targets,
                           int imgSizeY, int numModulesY, int numModulesX, int paddingStart, int moduleStride,
                           int numImgColors, int numGroups) {
     convFilterActs(images, filters, targets, imgSizeY, numModulesY, numModulesX, paddingStart, moduleStride, numImgColors, numGroups, 0, 1);
 }
 
-void convFilterActs(NVMatrix& images, NVMatrix& filters, NVMatrix& targets,
+void convFilterActs(HIPMatrix& images, HIPMatrix& filters, HIPMatrix& targets,
                    int imgSizeY, int numModulesY, int numModulesX, int paddingStart, int moduleStride,
                    int numImgColors, int numGroups,
                    float scaleTargets, float scaleOutput) {
      _filterActs(images, filters, targets, imgSizeY, numModulesY, numModulesX, paddingStart, moduleStride, numImgColors, numGroups, scaleTargets, scaleOutput, true);
 }
 
-void localFilterActs(NVMatrix& images, NVMatrix& filters, NVMatrix& targets,
+void localFilterActs(HIPMatrix& images, HIPMatrix& filters, HIPMatrix& targets,
                           int imgSizeY, int numModulesY, int numModulesX, int paddingStart, int moduleStride,
                           int numImgColors, int numGroups) {
     localFilterActs(images, filters, targets, imgSizeY, numModulesY, numModulesX, paddingStart, moduleStride, numImgColors, numGroups, 0, 1);
 }
 
-void localFilterActs(NVMatrix& images, NVMatrix& filters, NVMatrix& targets,
+void localFilterActs(HIPMatrix& images, HIPMatrix& filters, HIPMatrix& targets,
                    int imgSizeY, int numModulesY, int numModulesX, int paddingStart, int moduleStride,
                    int numImgColors, int numGroups,
                    float scaleTargets, float scaleOutput) {

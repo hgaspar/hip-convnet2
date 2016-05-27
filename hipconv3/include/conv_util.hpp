@@ -26,47 +26,47 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-void convLocalMaxUndo(NVMatrix& images, NVMatrix& maxGrads, NVMatrix& maxActs, NVMatrix& target,
+void convLocalMaxUndo(HIPmatrix& images, HIPmatrix& maxGrads, HIPmatrix& maxActs, HIPmatrix& target,
                       int subsX, int startX, int strideX, int outputsX);
-void convLocalAvgUndo(NVMatrix& avgGrads, NVMatrix& target,
+void convLocalAvgUndo(HIPmatrix& avgGrads, HIPmatrix& target,
                       int subsX, int startX, int strideX, int outputsX, int imgSize, bool sum);
 
-void convLocalAvgUndo(NVMatrix& avgGrads, NVMatrix& target,
+void convLocalAvgUndo(HIPmatrix& avgGrads, HIPmatrix& target,
                       int subsX, int startX, int strideX, int outputsX, int imgSize, bool sum,
                       float scaleTargets, float scaleOutput);
-void convLocalMaxUndo(NVMatrix& images, NVMatrix& maxGrads, NVMatrix& maxActs, NVMatrix& target,
+void convLocalMaxUndo(HIPmatrix& images, HIPmatrix& maxGrads, HIPmatrix& maxActs, HIPmatrix& target,
                       int subsX, int startX, int strideX, int outputsX, float scaleTargets, float scaleOutput);
 
-void convResponseNorm(NVMatrix& images, NVMatrix& denoms, NVMatrix& target, int numFilters, int sizeX, float addScale, float powScale, float minDiv);
-void convResponseNormUndo(NVMatrix& outGrads, NVMatrix& denoms, NVMatrix& inputs, NVMatrix& acts, NVMatrix& target, int numFilters,
+void convResponseNorm(HIPmatrix& images, HIPmatrix& denoms, HIPmatrix& target, int numFilters, int sizeX, float addScale, float powScale, float minDiv);
+void convResponseNormUndo(HIPmatrix& outGrads, HIPmatrix& denoms, HIPmatrix& inputs, HIPmatrix& acts, HIPmatrix& target, int numFilters,
                          int sizeX, float addScale, float powScale, float scaleTargets, float scaleOutput);
-void convContrastNorm(NVMatrix& images, NVMatrix& meanDiffs, NVMatrix& denoms, NVMatrix& target, int numFilters, int sizeX, float addScale, float powScale, float minDiv);
-void convContrastNormUndo(NVMatrix& outGrads, NVMatrix& denoms, NVMatrix& meanDiffs, NVMatrix& acts, NVMatrix& target, int numFilters,
+void convContrastNorm(HIPmatrix& images, HIPmatrix& meanDiffs, HIPmatrix& denoms, HIPmatrix& target, int numFilters, int sizeX, float addScale, float powScale, float minDiv);
+void convContrastNormUndo(HIPmatrix& outGrads, HIPmatrix& denoms, HIPmatrix& meanDiffs, HIPmatrix& acts, HIPmatrix& target, int numFilters,
                          int sizeX, float addScale, float powScale, float scaleTargets, float scaleOutput);
 
-void convGaussianBlur(NVMatrix& images, NVMatrix& filter, NVMatrix& target, bool horiz, int numChannels,
+void convGaussianBlur(HIPmatrix& images, HIPmatrix& filter, HIPmatrix& target, bool horiz, int numChannels,
                       float scaleTargets, float scaleOutputs);
-void convBedOfNails(NVMatrix& images, NVMatrix& target, int numChannels, int imgSize, int startX,
+void convBedOfNails(HIPmatrix& images, HIPmatrix& target, int numChannels, int imgSize, int startX,
                     int strideX, float scaleTargets, float scaleOutput);
-void convBedOfNailsUndo(NVMatrix& actsGrad, NVMatrix& target, int numChannels, int imgSize,
+void convBedOfNailsUndo(HIPmatrix& actsGrad, HIPmatrix& target, int numChannels, int imgSize,
                         int startX, int strideX, float scaleTargets, float scaleOutput);
 
-void convResizeBilinear(NVMatrix& images, NVMatrix& target, int imgSize, int tgtSize, float scale);
-void convRGBToYUV(NVMatrix& images, NVMatrix& target);
-void convRGBToLAB(NVMatrix& images, NVMatrix& target, bool center);
-void convCrop(NVMatrix& imgs, NVMatrix& target, int imgSize, int tgtSize, int startY, int startX);
-void normalizeLocalWeights(NVMatrix& weights, int numModules, float norm);
-void convContrastNormCrossMap(NVMatrix& images, NVMatrix& meanDiffs, NVMatrix& target,
+void convResizeBilinear(HIPmatrix& images, HIPmatrix& target, int imgSize, int tgtSize, float scale);
+void convRGBToYUV(HIPmatrix& images, HIPmatrix& target);
+void convRGBToLAB(HIPmatrix& images, HIPmatrix& target, bool center);
+void convCrop(HIPmatrix& imgs, HIPmatrix& target, int imgSize, int tgtSize, int startY, int startX);
+void normalizeLocalWeights(HIPmatrix& weights, int numModules, float norm);
+void convContrastNormCrossMap(HIPmatrix& images, HIPmatrix& meanDiffs, HIPmatrix& target,
                              int numFilters, int sizeF, float addScale, float powScale, float minDiv, bool blocked);
-void convResponseNormCrossMapUndo(NVMatrix& outGrads, NVMatrix& inputs, NVMatrix& acts, NVMatrix& target, int numFilters,
+void convResponseNormCrossMapUndo(HIPmatrix& outGrads, HIPmatrix& inputs, HIPmatrix& acts, HIPmatrix& target, int numFilters,
                          int sizeF, float addScale, float powScale, float minDiv, bool blocked, float scaleTargets, float scaleOutput);
-void convResponseNormCrossMap(NVMatrix& images, NVMatrix& target, int numFilters, int sizeF, float addScale,
+void convResponseNormCrossMap(HIPmatrix& images, HIPmatrix& target, int numFilters, int sizeF, float addScale,
                               float powScale, bool blocked);
-void convResponseNormCrossMap(NVMatrix& images, NVMatrix& target, int numFilters, int sizeF, float addScale,
+void convResponseNormCrossMap(HIPmatrix& images, HIPmatrix& target, int numFilters, int sizeF, float addScale,
                               float powScale, float minDiv, bool blocked);
-void convReflectHorizontal(NVMatrix& images, NVMatrix& targets, int imgSize);
+void convReflectHorizontal(HIPmatrix& images, HIPmatrix& targets, int imgSize);
 
-void convCrossMapMaxPoolUndo(NVMatrix& images, NVMatrix& maxGrads, NVMatrix& maxActs, NVMatrix& target,
+void convCrossMapMaxPoolUndo(HIPmatrix& images, HIPmatrix& maxGrads, HIPmatrix& maxActs, HIPmatrix& target,
                              const int imgSize, const int startF, const int poolSize,
                              const int stride, const float scaleTargets, const float scaleOutputs);
 template<bool sum>
@@ -263,7 +263,7 @@ __global__ void kPoolCrossMap(float* imgs, float* target, const int imgSize,
  * target:      (numOutputs, imgPixels, numImages)
  */
 template<class Pooler>
-void convPoolCrossMap(NVMatrix& images, NVMatrix& target, const int startF, const int poolSize,
+void convPoolCrossMap(HIPmatrix& images, HIPmatrix& target, const int startF, const int poolSize,
                       const int numOutputs, const int stride, const int imgSize, Pooler pooler) {
     int numImages = images.getNumCols();
     int imgPixels = imgSize * imgSize;
@@ -279,7 +279,7 @@ void convPoolCrossMap(NVMatrix& images, NVMatrix& target, const int startF, cons
     assert(startF <= 0);
     assert(startF + (numOutputs-1) * stride + poolSize >= numFilters); // All filters must be covered
 
-    hipStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = HIPmatrix::getDefaultStream();
     target.resize(imgPixels*numOutputs, numImages);
     int imgsPerThread = numImages % 128 == 0 ? 4 : numImages % 64 == 0 ? 2 : 1;
 
@@ -448,7 +448,7 @@ __global__ void kLocalPool2(float* imgs, float* target, const int imgSize, const
  * target:      (numFilters, outputs, numImages)
  */
 template<class Pooler>
-void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
+void convLocalPool(HIPmatrix& images, HIPmatrix& target, int numFilters,
                    int subsX, int startX, int strideX, int outputsX, Pooler pooler) {
     int numImages = images.getNumCols();
     int imgPixels = images.getNumRows() / numFilters;
@@ -461,7 +461,7 @@ void convLocalPool(NVMatrix& images, NVMatrix& target, int numFilters,
     assert(images.isContiguous());
 //    assert(numFilters % 4 == 0);
 //    assert(numImages % 128 == 0);
-    hipStream_t stream = NVMatrix::getDefaultStream();
+    hipStream_t stream = HIPmatrix::getDefaultStream();
     int outputs = outputsX * outputsX;
     target.resize(numFilters*outputs, numImages);
 

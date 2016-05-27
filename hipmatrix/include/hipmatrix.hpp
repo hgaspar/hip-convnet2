@@ -66,10 +66,10 @@
  */
 #define HOST_MEMORY_MANAGER         CUDAHostMemoryManager
 
-class NVMatrix;
-typedef std::vector<NVMatrix*> NVMatrixV;
+class HIPMatrix;
+typedef std::vector<HIPMatrix*> NVMatrixV;
 
-class NVMatrix {
+class HIPMatrix {
 protected:
     int _numCols, _numRows;
     int _numElements;
@@ -78,7 +78,7 @@ protected:
     MemorySegment* _memSegment;
     bool _isTrans;
     bool _ownsData;
-    // This flag makes sure that the NVMatrix destructor does nothing
+    // This flag makes sure that the HIPMatrix destructor does nothing
     // when called on HostNVMatrix instance.
     bool _deleted;
     cudaTextureObject_t _texObj;
@@ -106,53 +106,53 @@ protected:
     template<class Agg> float cpuAgg(Agg agg, hipStream_t stream);
     template<class Agg> float _totalAgg(Agg agg);
     template<class Agg> float _totalAgg(Agg agg, hipStream_t stream);
-    template<class Agg> float _totalAgg(Agg agg, NVMatrix& tmpbuf, hipStream_t stream);
-    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, NVMatrix* tmp);
-    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream);
-    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop);
-    template<class Agg, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream);
-    template<class Agg, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop);
-    template<class Agg, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream);
-    template<class Agg, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, BinaryOp bop);
-    template<class Agg, class UnaryOp, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, hipStream_t stream);
-    template<class Agg, class UnaryOp, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop);
+    template<class Agg> float _totalAgg(Agg agg, HIPMatrix& tmpbuf, hipStream_t stream);
+    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream, HIPMatrix* tmp);
+    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, hipStream_t stream);
+    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop);
+    template<class Agg, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream);
+    template<class Agg, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, BinaryOp bop);
+    template<class Agg, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream);
+    template<class Agg, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, BinaryOp bop);
+    template<class Agg, class UnaryOp, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, hipStream_t stream);
+    template<class Agg, class UnaryOp, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop);
 
-    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, NVMatrix& tmp);
-    template<class Agg, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp);
-    template<class Agg, class BinaryOp> void _aggregate(int axis, NVMatrix& target, Agg agg, BinaryOp bop, NVMatrix& tmp);
-    template<class Agg, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream, NVMatrix& tmp);
-    template<class Agg, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, NVMatrix& tmp);
-    template<class Agg, class UnaryOp, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, hipStream_t stream, NVMatrix& tmp);
-    template<class Agg, class UnaryOp, class BinaryOp> NVMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, NVMatrix& tmp);
+    template<class Agg, class UnaryOp, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, UnaryOp uop, BinaryOp bop, HIPMatrix& tmp);
+    template<class Agg, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, BinaryOp bop, hipStream_t stream, HIPMatrix& tmp);
+    template<class Agg, class BinaryOp> void _aggregate(int axis, HIPMatrix& target, Agg agg, BinaryOp bop, HIPMatrix& tmp);
+    template<class Agg, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, hipStream_t stream, HIPMatrix& tmp);
+    template<class Agg, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, BinaryOp bop, HIPMatrix& tmp);
+    template<class Agg, class UnaryOp, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, hipStream_t stream, HIPMatrix& tmp);
+    template<class Agg, class UnaryOp, class BinaryOp> HIPMatrix& _aggregate(int axis, Agg agg, UnaryOp, BinaryOp bop, HIPMatrix& tmp);
 
-    template <class Randomizer> void _unaryRandomize(NVMatrix& target, Randomizer rnd, hipStream_t stream);
-    template <class Randomizer> void _unaryRandomize(NVMatrix& target, Randomizer rnd);
-    template <class Randomizer> void _binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd);
-    template <class Randomizer> void _binaryRandomize(NVMatrix& data2, NVMatrix& target, Randomizer rnd, hipStream_t stream);
+    template <class Randomizer> void _unaryRandomize(HIPMatrix& target, Randomizer rnd, hipStream_t stream);
+    template <class Randomizer> void _unaryRandomize(HIPMatrix& target, Randomizer rnd);
+    template <class Randomizer> void _binaryRandomize(HIPMatrix& data2, HIPMatrix& target, Randomizer rnd);
+    template <class Randomizer> void _binaryRandomize(HIPMatrix& data2, HIPMatrix& target, Randomizer rnd, hipStream_t stream);
 
     virtual void alloc(int numElements);
     virtual void dealloc();
     void deallocTexture();
-    virtual NVMatrix& construct() const;
-    virtual NVMatrix& construct(bool isTrans) const;
-    virtual NVMatrix& construct(int numRows, int numCols, bool isTrans=false) const;
-    virtual NVMatrix& construct(const Matrix& like, bool copy) const;
-    virtual NVMatrix& construct(const NVMatrix& like, bool copy) const;
-    virtual NVMatrix& construct(const NVMatrix& like) const;
-    virtual NVMatrix& construct(const Matrix& like) const;
-    virtual NVMatrix& construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const;
+    virtual HIPMatrix& construct() const;
+    virtual HIPMatrix& construct(bool isTrans) const;
+    virtual HIPMatrix& construct(int numRows, int numCols, bool isTrans=false) const;
+    virtual HIPMatrix& construct(const Matrix& like, bool copy) const;
+    virtual HIPMatrix& construct(const HIPMatrix& like, bool copy) const;
+    virtual HIPMatrix& construct(const HIPMatrix& like) const;
+    virtual HIPMatrix& construct(const Matrix& like) const;
+    virtual HIPMatrix& construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const;
     static hipblasHandle_t getCublasHandle();
     static hipblasHandle_t getCublasHandle(int deviceID);
 public:
-    NVMatrix();
-    NVMatrix(bool isTrans);
-    NVMatrix(int numRows, int numCols, bool isTrans=false);
-    NVMatrix(const Matrix& like, bool copy);
-    NVMatrix(const NVMatrix& like, bool copy);
-    NVMatrix(const NVMatrix& like);
-    NVMatrix(const Matrix& like);
-    NVMatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans);
-    virtual ~NVMatrix();
+    HIPMatrix();
+    HIPMatrix(bool isTrans);
+    HIPMatrix(int numRows, int numCols, bool isTrans=false);
+    HIPMatrix(const Matrix& like, bool copy);
+    HIPMatrix(const HIPMatrix& like, bool copy);
+    HIPMatrix(const HIPMatrix& like);
+    HIPMatrix(const Matrix& like);
+    HIPMatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans);
+    virtual ~HIPMatrix();
 
     // Returns the device ID on which the data pointer is allocated
     int getDataDeviceID() const;
@@ -194,7 +194,7 @@ public:
         return m.getNumRows() == _numRows && m.getNumCols() == _numCols;
     }
 
-    bool isSameDims(const NVMatrix& m) const {
+    bool isSameDims(const HIPMatrix& m) const {
         return m.getNumRows() == _numRows && m.getNumCols() == _numCols;
     }
 
@@ -282,52 +282,52 @@ public:
     virtual void copyToHost(Matrix& hostMatrix) const;
     virtual void copyToHost(Matrix& hostMatrix, bool resizeTarget) const;
     virtual void copyToHost(Matrix& hostMatrix, bool resizeTarget, hipStream_t stream) const;
-    void copy(NVMatrix& dest) const;
-    void copy(NVMatrix& dest, hipStream_t stream) const;
-    NVMatrix& copy() const;
-    void addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB, hipStream_t stream);
-    void addProduct(NVMatrix& a, NVMatrix &b, float scaleThis, float scaleAB);
-    void addProduct(NVMatrix& a, NVMatrix &b);
-    void rightMult(NVMatrix &b, float scaleAB, NVMatrix &target, hipStream_t stream);
-    void rightMult(NVMatrix &b, float scaleAB, NVMatrix &target);
-    void rightMult(NVMatrix &b, NVMatrix &target);
-    void rightMult(NVMatrix &b, float scaleAB);
+    void copy(HIPMatrix& dest) const;
+    void copy(HIPMatrix& dest, hipStream_t stream) const;
+    HIPMatrix& copy() const;
+    void addProduct(HIPMatrix& a, HIPMatrix &b, float scaleThis, float scaleAB, hipStream_t stream);
+    void addProduct(HIPMatrix& a, HIPMatrix &b, float scaleThis, float scaleAB);
+    void addProduct(HIPMatrix& a, HIPMatrix &b);
+    void rightMult(HIPMatrix &b, float scaleAB, HIPMatrix &target, hipStream_t stream);
+    void rightMult(HIPMatrix &b, float scaleAB, HIPMatrix &target);
+    void rightMult(HIPMatrix &b, HIPMatrix &target);
+    void rightMult(HIPMatrix &b, float scaleAB);
     void randomizeUniform();
-    void addGaussianNoise(NVMatrix& stdevs, bool var, NVMatrix& target);
-    void addGaussianNoise(float stdev, NVMatrix& target);
-    void addGaussianNoise(NVMatrix& stdevs, bool var);
-    void addGaussianNoise(NVMatrix& stdevs);
+    void addGaussianNoise(HIPMatrix& stdevs, bool var, HIPMatrix& target);
+    void addGaussianNoise(float stdev, HIPMatrix& target);
+    void addGaussianNoise(HIPMatrix& stdevs, bool var);
+    void addGaussianNoise(HIPMatrix& stdevs);
     void addGaussianNoise(float stdev);
     void addGaussianNoise();
     void randomizeGaussian();
     void randomizeGaussian(float stdev);
     void randomizeGaussian(float mean, float stdev);
-    void randomizeGaussian(float mean, NVMatrix& stdevs);
-    void randomizeGaussian(float mean, float stdevMult, NVMatrix& stdevs);
-    void randomizeGaussian(NVMatrix& stdevs);
-    void randomizeGaussian(NVMatrix& stdevs, NVMatrix& target);
+    void randomizeGaussian(float mean, HIPMatrix& stdevs);
+    void randomizeGaussian(float mean, float stdevMult, HIPMatrix& stdevs);
+    void randomizeGaussian(HIPMatrix& stdevs);
+    void randomizeGaussian(HIPMatrix& stdevs, HIPMatrix& target);
     void binarizeProbs();
-    void binarizeProbs(NVMatrix& target);
+    void binarizeProbs(HIPMatrix& target);
 
-    void biggerThan(NVMatrix& m, NVMatrix& target);
-    void biggerThan(NVMatrix& m);
-    void biggerThanVector(NVMatrix& vec, NVMatrix& target);
-    void biggerThanVector(NVMatrix& vec);
-    void equals(NVMatrix& m, NVMatrix& target);
-    void equals(NVMatrix& m);
+    void biggerThan(HIPMatrix& m, HIPMatrix& target);
+    void biggerThan(HIPMatrix& m);
+    void biggerThanVector(HIPMatrix& vec, HIPMatrix& target);
+    void biggerThanVector(HIPMatrix& vec);
+    void equals(HIPMatrix& m, HIPMatrix& target);
+    void equals(HIPMatrix& m);
 
     void _checkBounds(int startRow, int endRow, int startCol, int endCol) const;
-    NVMatrix& slice(int startRow, int endRow, int startCol, int endCol) const;
-    void slice(int startRow, int endRow, int startCol, int endCol, NVMatrix& target) const;
-    NVMatrix& sliceRows(int startRow, int endRow) const;
-    void sliceRows(int startRow, int endRow, NVMatrix& target) const;
-    NVMatrix& sliceCols(int startCol, int endCol) const;
-    void sliceCols(int startCol, int endCol, NVMatrix& target) const;
+    HIPMatrix& slice(int startRow, int endRow, int startCol, int endCol) const;
+    void slice(int startRow, int endRow, int startCol, int endCol, HIPMatrix& target) const;
+    HIPMatrix& sliceRows(int startRow, int endRow) const;
+    void sliceRows(int startRow, int endRow, HIPMatrix& target) const;
+    HIPMatrix& sliceCols(int startCol, int endCol) const;
+    void sliceCols(int startCol, int endCol, HIPMatrix& target) const;
 
     NVMatrixV& splitRows(int numParts);
     NVMatrixV& splitCols(int numParts);
 
-    template <class Op> void apply(Op op, NVMatrix& target, hipStream_t stream) {
+    template <class Op> void apply(Op op, HIPMatrix& target, hipStream_t stream) {
         if (!target.isSameDims(*this)) {
             target.resize(*this);
         }
@@ -368,7 +368,7 @@ public:
         apply(op, *this, stream);
     }
 
-    template <class Op> void apply(Op op, NVMatrix& target) {
+    template <class Op> void apply(Op op, HIPMatrix& target) {
         apply(op, target, getDefaultStream());
     }
 
@@ -376,15 +376,15 @@ public:
         apply(op, *this);
     }
 
-    template <class Op> void applyBinary(Op op, NVMatrix& b) {
+    template <class Op> void applyBinary(Op op, HIPMatrix& b) {
         applyBinary(op, b, *this);
     }
 
-    template <class Op> void applyBinary(Op op, NVMatrix& b, NVMatrix& target) {
+    template <class Op> void applyBinary(Op op, HIPMatrix& b, HIPMatrix& target) {
         applyBinary(op, b, target, getDefaultStream());
     }
 
-    template <class Op> void applyBinary(Op op, NVMatrix& b, NVMatrix& target, hipStream_t stream) {
+    template <class Op> void applyBinary(Op op, HIPMatrix& b, HIPMatrix& target, hipStream_t stream) {
         assert(this->isSameDims(b));
 
         if (!target.isSameDims(*this)) {
@@ -443,11 +443,11 @@ public:
         }
     }
 
-    template <class Op> void applyTernary(Op op, NVMatrix& b, NVMatrix& c, NVMatrix& target) {
+    template <class Op> void applyTernary(Op op, HIPMatrix& b, HIPMatrix& c, HIPMatrix& target) {
         applyTernary(op, b, c, target, getDefaultStream());
     }
 
-    template <class Op> void applyTernary(Op op, NVMatrix& b, NVMatrix& c, NVMatrix& target, hipStream_t stream) {
+    template <class Op> void applyTernary(Op op, HIPMatrix& b, HIPMatrix& c, HIPMatrix& target, hipStream_t stream) {
         assert(isSameDims(b));
         assert(isSameDims(c));
         // For now ternary ops are only supported for matrices of same transposedness
@@ -476,63 +476,63 @@ public:
 
     bool resize(int numRows, int numCols, bool trans);
     bool resize(int numRows, int numCols);
-    bool resize(const NVMatrix &like);
+    bool resize(const HIPMatrix &like);
     bool resize(const Matrix &like);
     void reshape(int numRows, int numCols);
-    NVMatrix& reshaped(int numRows, int numCols) const;
-    void copy(NVMatrix &dest, int srcStartRow, int srcEndRow, int srcStartCol, int srcEndCol, int destStartRow, int destStartCol) const;
-    void copy(NVMatrix &dest, int srcStartRow, int srcEndRow, int srcStartCol, int srcEndCol, int destStartRow, int destStartCol, hipStream_t stream) const;
-    void add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target, hipStream_t stream);
-    void add(NVMatrix& b, float scaleA, float scaleB, NVMatrix& target);
-    void add(NVMatrix& b, float scaleB, NVMatrix& target);
-    void add(NVMatrix& b, NVMatrix& target);
-    void add(NVMatrix& b, float scaleB);
-    void add(NVMatrix& b, float scaleA, float scaleB);
-    void add(NVMatrix& b);
-    void eltwiseMult(NVMatrix& b);
-    void eltwiseMult(NVMatrix& b, NVMatrix& target);
-    void eltwiseDivide(NVMatrix& b);
-    void eltwiseDivide(NVMatrix& b, NVMatrix& target);
-    void squaredDiff(NVMatrix& b);
-    void squaredDiff(NVMatrix& b, NVMatrix& target);
-    void subtract(NVMatrix& b, NVMatrix& target);
-    void subtract(NVMatrix& b);
-    void addVector(NVMatrix& vec, float scaleVec, NVMatrix& target, hipStream_t stream);
-    void addVector(NVMatrix& vec, float scaleVec, NVMatrix& target);
-    void addVector(NVMatrix& vec);
-    void addVector(NVMatrix& vec, float scaleVec);
-    void addVector(NVMatrix& vec, NVMatrix& target);
-    void equalsVector(NVMatrix& vec, NVMatrix& target);
-    void equalsVector(NVMatrix& vec);
-    void eltwiseMultByVector(NVMatrix& vec, NVMatrix& target, hipStream_t stream);
-    void eltwiseMultByVector(NVMatrix& vec, NVMatrix& target);
-    void eltwiseMultByVector(NVMatrix& vec);
-    void eltwiseMultByVector(NVMatrix& vec, hipStream_t stream);
-    void eltwiseDivideByVector(NVMatrix& vec, NVMatrix& target);
-    void eltwiseDivideByVector(NVMatrix& vec);
-    void tile(int timesY, int timesX, NVMatrix& target);
-    void tile(int timesY, int timesX, NVMatrix& target, hipStream_t stream);
+    HIPMatrix& reshaped(int numRows, int numCols) const;
+    void copy(HIPMatrix &dest, int srcStartRow, int srcEndRow, int srcStartCol, int srcEndCol, int destStartRow, int destStartCol) const;
+    void copy(HIPMatrix &dest, int srcStartRow, int srcEndRow, int srcStartCol, int srcEndCol, int destStartRow, int destStartCol, hipStream_t stream) const;
+    void add(HIPMatrix& b, float scaleA, float scaleB, HIPMatrix& target, hipStream_t stream);
+    void add(HIPMatrix& b, float scaleA, float scaleB, HIPMatrix& target);
+    void add(HIPMatrix& b, float scaleB, HIPMatrix& target);
+    void add(HIPMatrix& b, HIPMatrix& target);
+    void add(HIPMatrix& b, float scaleB);
+    void add(HIPMatrix& b, float scaleA, float scaleB);
+    void add(HIPMatrix& b);
+    void eltwiseMult(HIPMatrix& b);
+    void eltwiseMult(HIPMatrix& b, HIPMatrix& target);
+    void eltwiseDivide(HIPMatrix& b);
+    void eltwiseDivide(HIPMatrix& b, HIPMatrix& target);
+    void squaredDiff(HIPMatrix& b);
+    void squaredDiff(HIPMatrix& b, HIPMatrix& target);
+    void subtract(HIPMatrix& b, HIPMatrix& target);
+    void subtract(HIPMatrix& b);
+    void addVector(HIPMatrix& vec, float scaleVec, HIPMatrix& target, hipStream_t stream);
+    void addVector(HIPMatrix& vec, float scaleVec, HIPMatrix& target);
+    void addVector(HIPMatrix& vec);
+    void addVector(HIPMatrix& vec, float scaleVec);
+    void addVector(HIPMatrix& vec, HIPMatrix& target);
+    void equalsVector(HIPMatrix& vec, HIPMatrix& target);
+    void equalsVector(HIPMatrix& vec);
+    void eltwiseMultByVector(HIPMatrix& vec, HIPMatrix& target, hipStream_t stream);
+    void eltwiseMultByVector(HIPMatrix& vec, HIPMatrix& target);
+    void eltwiseMultByVector(HIPMatrix& vec);
+    void eltwiseMultByVector(HIPMatrix& vec, hipStream_t stream);
+    void eltwiseDivideByVector(HIPMatrix& vec, HIPMatrix& target);
+    void eltwiseDivideByVector(HIPMatrix& vec);
+    void tile(int timesY, int timesX, HIPMatrix& target);
+    void tile(int timesY, int timesX, HIPMatrix& target, hipStream_t stream);
 
-    void addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum);
-    void addSum(NVMatrix& a, int axis, float scaleThis, float scaleSum, hipStream_t stream);
-    void addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax);
-    void addMax(NVMatrix& a, int axis, float scaleThis, float scaleMax, hipStream_t stream);
-    void sum(int axis, NVMatrix& target, hipStream_t stream);
-    void sum(int axis, NVMatrix& target);
-    void sum(int axis, NVMatrix& target, hipStream_t stream, NVMatrix& tmp);
-    void sum(int axis, NVMatrix& target, NVMatrix& tmp);
-    NVMatrix& sum(int axis);
-    void max(int axis, NVMatrix& target);
-    void max(int axis, NVMatrix& target, NVMatrix& tmp);
-    NVMatrix& max(int axis);
-    void min(int axis, NVMatrix& target);
-    NVMatrix& min(int axis);
-    void sumOfSquares(int axis, NVMatrix& target, hipStream_t stream);
-    void sumOfSquares(int axis, NVMatrix& target);
-    NVMatrix& sumOfSquares(int axis);
+    void addSum(HIPMatrix& a, int axis, float scaleThis, float scaleSum);
+    void addSum(HIPMatrix& a, int axis, float scaleThis, float scaleSum, hipStream_t stream);
+    void addMax(HIPMatrix& a, int axis, float scaleThis, float scaleMax);
+    void addMax(HIPMatrix& a, int axis, float scaleThis, float scaleMax, hipStream_t stream);
+    void sum(int axis, HIPMatrix& target, hipStream_t stream);
+    void sum(int axis, HIPMatrix& target);
+    void sum(int axis, HIPMatrix& target, hipStream_t stream, HIPMatrix& tmp);
+    void sum(int axis, HIPMatrix& target, HIPMatrix& tmp);
+    HIPMatrix& sum(int axis);
+    void max(int axis, HIPMatrix& target);
+    void max(int axis, HIPMatrix& target, HIPMatrix& tmp);
+    HIPMatrix& max(int axis);
+    void min(int axis, HIPMatrix& target);
+    HIPMatrix& min(int axis);
+    void sumOfSquares(int axis, HIPMatrix& target, hipStream_t stream);
+    void sumOfSquares(int axis, HIPMatrix& target);
+    HIPMatrix& sumOfSquares(int axis);
     float mean();
     float sum();
-    float sum(NVMatrix& tmpbuf);
+    float sum(HIPMatrix& tmpbuf);
     float max();
     float min();
     float countInf();
@@ -541,43 +541,43 @@ public:
     float norm();
 
     void inRangeInc(float lower, float upper);
-    void inRangeInc(float lower, float upper, NVMatrix& target);
+    void inRangeInc(float lower, float upper, HIPMatrix& target);
     void inRangeExc(float lower, float upper);
-    void inRangeExc(float lower, float upper, NVMatrix& target);
+    void inRangeExc(float lower, float upper, HIPMatrix& target);
     void biggerThanScalar(float scalar);
-    void biggerThanScalar(float scalar, NVMatrix& target);
+    void biggerThanScalar(float scalar, HIPMatrix& target);
     void smallerThanScalar(float scalar);
-    void smallerThanScalar(float scalar, NVMatrix& target);
-    void addScalar(float scaleThis, float scalar, NVMatrix& target);
-    void addScalar(float scalar, NVMatrix& target);
+    void smallerThanScalar(float scalar, HIPMatrix& target);
+    void addScalar(float scaleThis, float scalar, HIPMatrix& target);
+    void addScalar(float scalar, HIPMatrix& target);
     void addScalar(float scalar);
-    void minWithScalar(float scalar, NVMatrix& target);
+    void minWithScalar(float scalar, HIPMatrix& target);
     void minWithScalar(float scalar);
-    void maxWithScalar(float scalar, NVMatrix& target);
+    void maxWithScalar(float scalar, HIPMatrix& target);
     void maxWithScalar(float scalar);
-    void pow(float p, NVMatrix& target);
+    void pow(float p, HIPMatrix& target);
     void pow(float p);
     void scale(float _scale);
-    void scale(float _scale, NVMatrix& target);
-    void scale(float _scale, NVMatrix& target, hipStream_t stream);
+    void scale(float _scale, HIPMatrix& target);
+    void scale(float _scale, HIPMatrix& target, hipStream_t stream);
     void scale(float _scale, hipStream_t stream);
     void zero();
-    void zero(NVMatrix& like);
+    void zero(HIPMatrix& like);
 
-    float dotProduct(NVMatrix& b, NVMatrix& tmp, hipStream_t stream);
-    float dotProduct(NVMatrix& b, hipStream_t stream);
-    float dotProduct(NVMatrix& b);
+    float dotProduct(HIPMatrix& b, HIPMatrix& tmp, hipStream_t stream);
+    float dotProduct(HIPMatrix& b, hipStream_t stream);
+    float dotProduct(HIPMatrix& b);
 
     /*
      * Does SOFT transpose and returns result, leaving this matrix unchanged
      */
-    NVMatrix& getTranspose();
-    NVMatrix& getClone();
+    HIPMatrix& getTranspose();
+    HIPMatrix& getClone();
 
     /*
      * Does HARD transpose and puts result in target
      */
-    void transpose(NVMatrix& target);
+    void transpose(HIPMatrix& target);
 
     /*
      * Does SOFT transpose
@@ -585,19 +585,19 @@ public:
     void transpose();
     bool transpose(bool trans);
 
-    void flipTrans(NVMatrix& target, hipStream_t stream);
-    void flipTrans(NVMatrix& target);
-    NVMatrix& flipTrans();
+    void flipTrans(HIPMatrix& target, hipStream_t stream);
+    void flipTrans(HIPMatrix& target);
+    HIPMatrix& flipTrans();
 
     void print(int startRow, int rows, int startCol, int cols) const;
     void print(int rows, int cols) const;
     void printShape(const char* name) const;
 
-    template <class Op> void applyBinaryV(Op op, NVMatrix& vec, NVMatrix& target) {
+    template <class Op> void applyBinaryV(Op op, HIPMatrix& vec, HIPMatrix& target) {
         applyBinaryV(op, vec, target, getDefaultStream());
     }
 
-    template <class Op> void applyBinaryV(Op op, NVMatrix& vec, NVMatrix& target, hipStream_t stream) {
+    template <class Op> void applyBinaryV(Op op, HIPMatrix& vec, HIPMatrix& target, hipStream_t stream) {
         assert(&target != &vec); // for now
         if (isSameDims(vec)) {
             applyBinary(op, vec, target, stream);
@@ -634,26 +634,26 @@ public:
     static void assertSame(NVMatrixV& a);
 };
 
-class HostNVMatrix : public NVMatrix {
+class HostNVMatrix : public HIPMatrix {
 protected:
     void alloc(int numElements);
     void dealloc();
-    NVMatrix& construct() const;
-    NVMatrix& construct(bool isTrans) const;
-    NVMatrix& construct(int numRows, int numCols, bool isTrans=false) const;
-    NVMatrix& construct(const Matrix& like, bool copy) const;
-    NVMatrix& construct(const NVMatrix& like, bool copy) const;
-    NVMatrix& construct(const NVMatrix& like) const;
-    NVMatrix& construct(const Matrix& like) const;
-    NVMatrix& construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const;
+    HIPMatrix& construct() const;
+    HIPMatrix& construct(bool isTrans) const;
+    HIPMatrix& construct(int numRows, int numCols, bool isTrans=false) const;
+    HIPMatrix& construct(const Matrix& like, bool copy) const;
+    HIPMatrix& construct(const HIPMatrix& like, bool copy) const;
+    HIPMatrix& construct(const HIPMatrix& like) const;
+    HIPMatrix& construct(const Matrix& like) const;
+    HIPMatrix& construct(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans) const;
 public:
     ~HostNVMatrix();
     HostNVMatrix();
     HostNVMatrix(bool isTrans);
     HostNVMatrix(int numRows, int numCols, bool isTrans=false);
     HostNVMatrix(const Matrix& like, bool copy);
-    HostNVMatrix(const NVMatrix& like, bool copy);
-    HostNVMatrix(const NVMatrix& like);
+    HostNVMatrix(const HIPMatrix& like, bool copy);
+    HostNVMatrix(const HIPMatrix& like);
     HostNVMatrix(const Matrix& like);
     HostNVMatrix(MemorySegment* mem, int numRows, int numCols, int stride, bool isTrans);
     void copyFromHost(const Matrix& hostMatrix);
